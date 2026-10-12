@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <channel>
+    <title>Veículo de Teste</title>
+    <link>https://exemplo.com.br</link>
+    <description></description>
+    <item>
+      <title>Câmara aprova projeto &amp; segue ao Senado</title>
+      <link>https://exemplo.com.br/politica/camara-aprova/?utm_source=rss&amp;utm_medium=feed</link>
+      <guid isPermaLink="false">https://exemplo.com.br/?p=101</guid>
+      <pubDate>Mon, 12 Oct 2026 15:59:37 +0000</pubDate>
+      <description><![CDATA[<p>Resumo <strong>curto</strong> da matéria.</p>]]></description>
+      <content:encoded><![CDATA[<p>Texto completo que NÃO deve ser guardado.</p>]]></content:encoded>
+    </item>
+    <item>
+      <title>Notícia sem data</title>
+      <link>https://exemplo.com.br/brasil/sem-data/</link>
+    </item>
+    <item>
+      <title>Data no formato Dublin Core</title>
+      <link>https://exemplo.com.br/economia/dc/</link>
+      <dc:date>2026-10-12T12:00:00-03:00</dc:date>
+    </item>
+    <item>
+      <title></title>
+      <link>https://exemplo.com.br/sem-titulo/</link>
+    </item>
+  </channel>
+</rss>

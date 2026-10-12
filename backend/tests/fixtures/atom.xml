@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>Feed Atom de Teste</title>
+  <id>urn:teste</id>
+  <updated>2026-10-12T18:00:00Z</updated>
+  <entry>
+    <title type="html">Inflação desacelera em setembro</title>
+    <link rel="self" href="https://exemplo.org/api/1"/>
+    <link rel="alternate" href="https://exemplo.org/economia/inflacao#comentarios"/>
+    <id>urn:teste:1</id>
+    <published>2026-10-12T09:30:00Z</published>
+    <updated>2026-10-12T11:00:00Z</updated>
+    <summary>IPCA veio abaixo do esperado.</summary>
+  </entry>
+</feed>

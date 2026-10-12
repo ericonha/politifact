@@ -1,0 +1,98 @@
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: politifact
+      POSTGRES_PASSWORD: politifact
+      POSTGRES_DB: politifact
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U politifact -d politifact"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  api:
+    build: ./backend
+    environment:
+      DATABASE_URL: postgresql+psycopg://politifact:politifact@db:5432/politifact
+      REDIS_URL: redis://redis:6379/0
+    # Migra e cadastra os veículos antes de subir a API (só a API faz isso, para não haver corrida com o worker).
+    command: >
+      sh -c "alembic upgrade head && python -m app.seed &&
+             uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
+    # Permite falar com o Ollama rodando no Mac (embeddings da fase 3).
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  worker:
+    build: ./backend
+    environment:
+      DATABASE_URL: postgresql+psycopg://politifact:politifact@db:5432/politifact
+      REDIS_URL: redis://redis:6379/0
+    command: python -m app.worker
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./backend:/app
+    depends_on:
+      api:
+        condition: service_healthy
+
+  # Enfileira a coleta de RSS a cada COLLECT_INTERVAL_MINUTES (padrão 30).
+  scheduler:
+    build: ./backend
+    environment:
+      DATABASE_URL: postgresql+psycopg://politifact:politifact@db:5432/politifact
+      REDIS_URL: redis://redis:6379/0
+      COLLECT_INTERVAL_MINUTES: "30"
+    command: python -m app.scheduler
+    volumes:
+      - ./backend:/app
+    depends_on:
+      worker:
+        condition: service_started
+
+  web:
+    build: ./frontend
+    environment:
+      API_URL: http://api:8000
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.next
+    depends_on:
+      api:
+        condition: service_healthy
+
+volumes:
+  pgdata:

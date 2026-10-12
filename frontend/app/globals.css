@@ -1,0 +1,141 @@
+:root {
+  --bg: #fafaf9;
+  --fg: #1c1917;
+  --muted: #78716c;
+  --line: #e7e5e4;
+  --accent: #b91c1c;
+  --card: #ffffff;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #1c1917;
+    --fg: #f5f5f4;
+    --muted: #a8a29e;
+    --line: #44403c;
+    --accent: #f87171;
+    --card: #292524;
+  }
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+a { color: inherit; }
+
+.top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 24px;
+  border-bottom: 1px solid var(--line);
+  background: var(--card);
+}
+.top nav { display: flex; gap: 16px; }
+.top nav a { text-decoration: none; color: var(--muted); }
+.top nav a:hover { color: var(--fg); }
+.brand { font-weight: 700; text-decoration: none; color: var(--accent) !important; }
+
+main { max-width: 1100px; margin: 0 auto; padding: 24px; }
+h1 { margin: 0; font-size: 22px; }
+
+.toolbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.tabs { display: flex; gap: 4px; }
+.tab {
+  padding: 6px 12px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  text-decoration: none;
+  color: var(--muted);
+}
+.tab.active { color: var(--fg); border-color: var(--fg); }
+
+.note { color: var(--muted); font-size: 13px; margin: 12px 0 20px; }
+.muted { color: var(--muted); font-size: 13px; }
+.empty {
+  padding: 32px;
+  text-align: center;
+  color: var(--muted);
+  border: 1px dashed var(--line);
+  border-radius: 8px;
+}
+
+table { width: 100%; border-collapse: collapse; background: var(--card); margin-top: 16px; }
+th, td { padding: 10px 12px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+th { font-size: 13px; color: var(--muted); font-weight: 600; }
+.num { text-align: center; white-space: nowrap; }
+
+@media (max-width: 700px) {
+  main { padding: 16px; }
+  table { display: block; overflow-x: auto; }
+}
+
+.filters { flex-wrap: wrap; margin-top: 16px; }
+.count {
+  margin-left: 6px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.articles { list-style: none; padding: 0; margin: 0; }
+.articles li { padding: 14px 0; border-bottom: 1px solid var(--line); }
+.articles .meta { display: flex; gap: 12px; font-size: 12px; color: var(--muted); margin-bottom: 2px; }
+.articles .outlet { font-weight: 600; color: var(--accent); }
+.articles .headline { font-weight: 600; text-decoration: none; }
+.articles .headline:hover { text-decoration: underline; }
+.articles p { margin: 4px 0 0; }
+
+.button {
+  padding: 8px 14px;
+  border: 1px solid var(--fg);
+  border-radius: 6px;
+  background: var(--fg);
+  color: var(--bg);
+  font: inherit;
+  cursor: pointer;
+}
+.button:hover { opacity: 0.85; }
+
+.warning {
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-left: 3px solid #d97706;
+  border-radius: 6px;
+  background: var(--card);
+  font-size: 13px;
+  margin-bottom: 8px;
+}
+
+.status { font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line); }
+.status.success { color: #15803d; }
+.status.partial { color: #b45309; }
+.status.failed { color: var(--accent); }
+.status.running { color: var(--muted); }
+.errors { white-space: pre-wrap; max-width: 380px; word-break: break-word; }
+
+.story-link { font-weight: 600; text-decoration: none; }
+.story-link:hover { text-decoration: underline; }
+
+.outlet-columns {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 24px;
+  margin-top: 16px;
+}
+.outlet-column h2 { font-size: 15px; margin: 0 0 4px; padding-bottom: 8px; border-bottom: 2px solid var(--fg); }
+
+.button.secondary { background: transparent; color: var(--fg); }
+
+.review { list-style: none; padding: 0; margin: 0; }
+.review li { padding: 16px 0; border-bottom: 1px solid var(--line); }
+.review .meta { display: flex; gap: 12px; font-size: 12px; color: var(--muted); margin-bottom: 2px; }
+.review .outlet { font-weight: 600; color: var(--accent); }
+.review .headline { font-weight: 600; text-decoration: none; }
+.candidate { margin: 6px 0; font-size: 14px; }
+.actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
