@@ -76,6 +76,8 @@ class StoryOut(BaseModel):
 class HealthOut(BaseModel):
     status: str
     database: str
+    schema_revision: str | None = None
+    schema_head: str | None = None
 
 
 class StoryArticleOut(BaseModel):

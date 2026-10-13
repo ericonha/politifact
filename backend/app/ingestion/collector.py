@@ -5,6 +5,7 @@ e nunca altera first_seen_at de um artigo já conhecido.
 """
 
 import logging
+from collections import Counter
 from collections.abc import Callable
 from datetime import UTC, datetime
 
@@ -23,6 +24,13 @@ PROVIDER = "rss"
 MAX_ERROR_CHARS = 2000
 
 Fetcher = Callable[[str], bytes]
+
+
+def short_error(exc: BaseException, limit: int = 200) -> str:
+    """Tipo + primeira linha da mensagem (erros do SQLAlchemy trazem o SQL inteiro)."""
+    first = str(exc).strip().splitlines()[0] if str(exc).strip() else ""
+    text = f"{type(exc).__name__}: {first}" if first else type(exc).__name__
+    return text[:limit]
 
 
 def _store_entry(session: Session, outlet: Outlet, entry: FeedEntry, now: datetime) -> bool:
@@ -79,6 +87,7 @@ def collect_outlet(
     session.commit()
 
     errors: list[str] = []
+    item_errors: Counter[str] = Counter()
     feeds_ok = 0
     discovered = inserted = failed = 0
 
@@ -90,7 +99,7 @@ def collect_outlet(
             entries = parse_feed(fetcher(feed_url))
         except Exception as exc:  # noqa: BLE001  (falha de um feed não derruba os outros)
             log.warning("%s: %s", feed_url, exc)
-            errors.append(f"{feed_url}: {type(exc).__name__}: {exc}")
+            errors.append(f"{feed_url}: {short_error(exc)}")
             continue
 
         feeds_ok += 1
@@ -102,10 +111,13 @@ def collect_outlet(
                         inserted += 1
             except Exception as exc:  # noqa: BLE001
                 failed += 1
-                log.warning("item %s: %s", entry.link, exc)
-                if len(errors) < 20:
-                    errors.append(f"item {entry.link}: {type(exc).__name__}: {exc}")
+                log.warning("item %s: %s", entry.link, short_error(exc))
+                item_errors[short_error(exc)] += 1
         session.commit()
+
+    # Agrupa erros iguais: "60 itens: UndefinedColumn ..." em vez de 60 linhas.
+    for message, count in item_errors.most_common(5):
+        errors.append(f"{count} {'item' if count == 1 else 'itens'}: {message}")
 
     if not errors:
         status = "success"
@@ -135,7 +147,9 @@ def collect_all(session: Session, fetcher: Fetcher = fetch) -> list[CollectionRu
 
 if __name__ == "__main__":
     from app.db import SessionLocal
+    from app.db_check import ensure_schema_current
 
+    ensure_schema_current()
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
     with SessionLocal() as s:
         for r in collect_all(s):

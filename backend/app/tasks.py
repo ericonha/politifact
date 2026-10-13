@@ -13,6 +13,7 @@ from rq import Queue
 
 from app.config import get_settings
 from app.db import SessionLocal
+from app.db_check import ensure_schema_current
 
 log = logging.getLogger(__name__)
 
@@ -41,6 +42,7 @@ def collect_all_job() -> dict:
     """Coleta todos os veículos ativos e, no fim, enfileira o processamento."""
     from app.ingestion.collector import collect_all
 
+    ensure_schema_current()
     redis = _redis()
     with _single_run(redis, "collect-all") as acquired:
         if not acquired:
@@ -64,6 +66,7 @@ def process_articles_job() -> dict:
     from app.clustering.embeddings import get_embedder
     from app.clustering.pipeline import process_new_articles
 
+    ensure_schema_current()
     with _single_run(_redis(), "process-articles") as acquired:
         if not acquired:
             log.info("processamento já em andamento; ignorando")

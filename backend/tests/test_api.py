@@ -14,7 +14,9 @@ client = TestClient(app)
 def test_health() -> None:
     r = client.get("/api/health")
     assert r.status_code == 200
-    assert r.json() == {"status": "ok", "database": "ok"}
+    body = r.json()
+    assert body["status"] == "ok", body
+    assert body["schema_revision"] == body["schema_head"]
 
 
 def test_outlets_seeded() -> None:

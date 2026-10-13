@@ -35,7 +35,7 @@ docker compose up --build
 - API: http://localhost:8000/docs
 - Health check: http://localhost:8000/api/health
 
-Ao subir, a API aplica as migrações e cadastra os veículos. O serviço `scheduler` dispara uma coleta logo no início e depois a cada 30 minutos; ao fim de cada coleta, as notícias novas são deduplicadas e agrupadas em histórias.
+Ao subir, o serviço `migrate` aplica as migrações e cadastra os veículos (ele roda de novo a cada `docker compose up`); só depois a API e o worker começam. Se o banco estiver atrasado em relação ao código, `/api/health` mostra `migration_pending` e os jobs param com uma mensagem explicando o que fazer. O serviço `scheduler` dispara uma coleta logo no início e depois a cada 30 minutos; ao fim de cada coleta, as notícias novas são deduplicadas e agrupadas em histórias.
 
 Quando mudar dependências (`pyproject.toml` ou `package.json`), suba com `--build`.
 
@@ -83,7 +83,7 @@ O resultado mostra precisão (baixa = junta histórias diferentes), recall (baix
 
 ### Mudar feeds ou ativar um veículo
 
-Edite `backend/app/seed.py` e reinicie a API (`docker compose restart api`); o seed atualiza os veículos existentes.
+Edite `backend/app/seed.py` e rode `docker compose up -d` (o serviço `migrate` roda o seed de novo e atualiza os veículos existentes).
 
 ### Testes
 

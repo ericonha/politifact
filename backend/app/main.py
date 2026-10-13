@@ -36,12 +36,21 @@ WINDOWS = {"24h": timedelta(hours=24), "3d": timedelta(days=3), "7d": timedelta(
 
 @app.get("/api/health", response_model=HealthOut)
 def health(session: Session = Depends(get_session)) -> HealthOut:
+    """status = "degraded" se o banco estiver fora ou com migração pendente."""
+    from app.db_check import schema_status
+
     try:
         session.execute(text("SELECT 1"))
-        db = "ok"
+        current, head = schema_status()
     except Exception:
-        db = "unavailable"
-    return HealthOut(status="ok" if db == "ok" else "degraded", database=db)
+        return HealthOut(status="degraded", database="unavailable")
+    db = "ok" if current == head else "migration_pending"
+    return HealthOut(
+        status="ok" if db == "ok" else "degraded",
+        database=db,
+        schema_revision=current,
+        schema_head=head,
+    )
 
 
 @app.get("/api/outlets", response_model=list[OutletOut])

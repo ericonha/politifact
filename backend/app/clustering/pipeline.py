@@ -247,7 +247,9 @@ if __name__ == "__main__":
 
     from app.clustering.embeddings import get_embedder
     from app.db import SessionLocal
+    from app.db_check import ensure_schema_current
 
+    ensure_schema_current()
     parser = argparse.ArgumentParser(description="Deduplica e agrupa notícias novas.")
     parser.add_argument("--reset", action="store_true",
                         help="apaga TODAS as histórias e decisões e reprocessa do zero")

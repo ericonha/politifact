@@ -1,3 +1,14 @@
+x-backend: &backend
+  build: ./backend
+  environment: &backend-env
+    DATABASE_URL: postgresql+psycopg://politifact:politifact@db:5432/politifact
+    REDIS_URL: redis://redis:6379/0
+  # Permite falar com o Ollama rodando no Mac (embeddings da fase 3).
+  extra_hosts:
+    - "host.docker.internal:host-gateway"
+  volumes:
+    - ./backend:/app
+
 services:
   db:
     image: pgvector/pgvector:pg16
@@ -25,25 +36,24 @@ services:
       timeout: 3s
       retries: 20
 
-  api:
-    build: ./backend
-    environment:
-      DATABASE_URL: postgresql+psycopg://politifact:politifact@db:5432/politifact
-      REDIS_URL: redis://redis:6379/0
-    # Migra e cadastra os veículos antes de subir a API (só a API faz isso, para não haver corrida com o worker).
-    command: >
-      sh -c "alembic upgrade head && python -m app.seed &&
-             uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
-    # Permite falar com o Ollama rodando no Mac (embeddings da fase 3).
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    ports:
-      - "8000:8000"
-    volumes:
-      - ./backend:/app
+  # Roda as migrações e o seed e termina. Como é um container que encerra,
+  # `docker compose up` o executa de novo toda vez, mesmo sem mudança de configuração.
+  migrate:
+    <<: *backend
+    command: sh -c "alembic upgrade head && python -m app.seed"
+    restart: "no"
     depends_on:
       db:
         condition: service_healthy
+
+  api:
+    <<: *backend
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    ports:
+      - "8000:8000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
       redis:
         condition: service_healthy
     healthcheck:
@@ -53,29 +63,21 @@ services:
       retries: 30
 
   worker:
-    build: ./backend
-    environment:
-      DATABASE_URL: postgresql+psycopg://politifact:politifact@db:5432/politifact
-      REDIS_URL: redis://redis:6379/0
+    <<: *backend
     command: python -m app.worker
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    volumes:
-      - ./backend:/app
     depends_on:
-      api:
+      migrate:
+        condition: service_completed_successfully
+      redis:
         condition: service_healthy
 
   # Enfileira a coleta de RSS a cada COLLECT_INTERVAL_MINUTES (padrão 30).
   scheduler:
-    build: ./backend
+    <<: *backend
     environment:
-      DATABASE_URL: postgresql+psycopg://politifact:politifact@db:5432/politifact
-      REDIS_URL: redis://redis:6379/0
+      <<: *backend-env
       COLLECT_INTERVAL_MINUTES: "30"
     command: python -m app.scheduler
-    volumes:
-      - ./backend:/app
     depends_on:
       worker:
         condition: service_started
