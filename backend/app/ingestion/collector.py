@@ -17,6 +17,7 @@ from app.ingestion.fetch import fetch
 from app.ingestion.normalize import canonical_url, content_hash, sanitize_published_at
 from app.ingestion.rss import FeedEntry, parse_feed
 from app.models import Article, CollectionRun, Outlet
+from app.topics import classify
 
 log = logging.getLogger(__name__)
 
@@ -37,6 +38,8 @@ def _store_entry(session: Session, outlet: Outlet, entry: FeedEntry, now: dateti
     """Grava um item. Retorna True se for um artigo novo."""
     url = canonical_url(entry.link)
     published = sanitize_published_at(entry.published_at, now)
+    topic = classify(entry.link, entry.categories, entry.title, entry.summary,
+                     foreign=outlet.outlet_group == "internacional")
     stmt = (
         insert(Article)
         .values(
@@ -55,6 +58,9 @@ def _store_entry(session: Session, outlet: Outlet, entry: FeedEntry, now: dateti
             content_reference=entry.link,
             collection_provider=PROVIDER,
             processing_status="new",
+            feed_categories=list(entry.categories) or None,
+            topic=topic.topic,
+            topic_source=topic.source,
         )
         .on_conflict_do_nothing(index_elements=["canonical_url"])
         .returning(Article.id)

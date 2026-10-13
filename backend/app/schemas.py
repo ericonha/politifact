@@ -16,6 +16,7 @@ class OutletOut(BaseModel):
     feed_urls: list[str]
     collection_notes: str | None
     active: bool
+    outlet_group: str = "nacional"
 
 
 class ArticleOut(BaseModel):
@@ -33,6 +34,8 @@ class ArticleOut(BaseModel):
     collected_at: datetime
     collection_provider: str
     processing_status: str
+    topic: str | None = None
+    topic_source: str | None = None
 
 
 class CollectionRunOut(BaseModel):
@@ -66,6 +69,7 @@ class StoryOut(BaseModel):
     id: int
     title: str
     summary: str | None
+    topic: str | None = None
     first_observed_at: datetime | None
     last_observed_at: datetime | None
     article_count: int = 0
@@ -90,6 +94,8 @@ class StoryArticleOut(BaseModel):
     published_at: datetime | None
     assignment_method: str  # seed | auto | syndicated | manual
     cluster_confidence: float | None
+    topic: str | None = None
+    topic_source: str | None = None
 
 
 class StoryDetailOut(StoryOut):
@@ -117,3 +123,9 @@ class ReviewActionIn(BaseModel):
 class ReviewActionOut(BaseModel):
     decision_id: int
     story_id: int
+
+
+class TopicOut(BaseModel):
+    key: str
+    label: str
+    article_count: int

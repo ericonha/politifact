@@ -71,7 +71,9 @@ def test_parse_rss2() -> None:
     assert first.summary == "Resumo curto da matéria."
     assert "NÃO deve ser guardado" not in (first.summary or "")
     assert first.published_at == datetime(2026, 10, 12, 15, 59, 37, tzinfo=UTC)
+    assert first.categories == ("Política", "Câmara dos Deputados")
     assert entries[1].published_at is None
+    assert entries[1].categories == ()
     assert entries[2].published_at == datetime(2026, 10, 12, 15, 0, tzinfo=UTC)
 
 
@@ -80,6 +82,7 @@ def test_parse_atom_prefers_alternate_link() -> None:
     assert entry.link == "https://exemplo.org/economia/inflacao#comentarios"
     assert entry.published_at == datetime(2026, 10, 12, 9, 30, tzinfo=UTC)
     assert entry.updated_at == datetime(2026, 10, 12, 11, 0, tzinfo=UTC)
+    assert entry.categories == ("Economia",)
 
 
 def test_parse_feed_rejects_html() -> None:
@@ -87,3 +90,12 @@ def test_parse_feed_rejects_html() -> None:
         parse_feed(b"<html><body>not a feed</body></html>")
     with pytest.raises(FeedParseError):
         parse_feed(b"<<<")
+
+
+def test_parse_feed_tolerates_undeclared_media_prefix() -> None:
+    # Como o feed da Revista Oeste: usa <media:content> sem declarar xmlns:media.
+    data = b"""<?xml version="1.0"?><rss version="2.0"><channel><title>x</title>
+      <item><title>Petr\xc3\xb3leo sobe</title><link>https://x.com/economia/a/</link>
+      <media:content url="https://x.com/i.jpg"/></item></channel></rss>"""
+    (entry,) = parse_feed(data)
+    assert entry.title == "Petróleo sobe"

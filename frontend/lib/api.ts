@@ -12,7 +12,18 @@ export type Outlet = {
   feed_urls: string[];
   collection_notes: string | null;
   active: boolean;
+  outlet_group: "nacional" | "internacional";
 };
+
+export type Group = "nacional" | "internacional";
+export const GROUPS: { value: Group | undefined; label: string }[] = [
+  { value: undefined, label: "Todos" },
+  { value: "nacional", label: "Nacionais" },
+  { value: "internacional", label: "Internacionais" },
+];
+export function parseGroup(value: string | undefined): Group | undefined {
+  return value === "nacional" || value === "internacional" ? value : undefined;
+}
 
 export type OutletCoverage = {
   outlet_id: number;
@@ -24,6 +35,7 @@ export type Story = {
   id: number;
   title: string;
   summary: string | null;
+  topic: string | null;
   first_observed_at: string | null;
   last_observed_at: string | null;
   article_count: number;
@@ -41,6 +53,8 @@ export type StoryArticle = {
   published_at: string | null;
   assignment_method: "seed" | "auto" | "syndicated" | "manual";
   cluster_confidence: number | null;
+  topic: string | null;
+  topic_source: string | null;
 };
 
 export type StoryDetail = Story & { articles: StoryArticle[] };
@@ -72,6 +86,90 @@ export type Article = {
   collected_at: string;
   collection_provider: string;
   processing_status: string;
+  topic: string | null;
+  topic_source: string | null;
+};
+
+export type Topic = { key: string; label: string; article_count: number };
+
+// Mesma ordem e nomes de app/topics.py (backend). Usado para rótulos sem ida à API.
+export const TOPIC_LABELS: Record<string, string> = {
+  politica: "Política",
+  economia: "Economia",
+  negocios: "Negócios",
+  internacional: "Internacional",
+  brasil: "Brasil",
+  esportes: "Esportes",
+  saude: "Saúde",
+  "ciencia-tecnologia": "Ciência e tecnologia",
+  cultura: "Cultura e entretenimento",
+  outros: "Outros",
+};
+
+export function parseTopic(value: string | undefined): string | undefined {
+  return value && value in TOPIC_LABELS ? value : undefined;
+}
+
+export type OutletCoverageRow = {
+  id: number;
+  slug: string;
+  name: string;
+  group: Group;
+  language: string;
+  active: boolean;
+  collection_notes: string | null;
+  article_count: number;
+  story_count: number;
+  exclusive_story_count: number;
+  covered_fraction: number | null;
+  gap_hours: number;
+  gaps: { start: string; end: string }[];
+  failed_runs: number;
+  possible_overflow_runs: number;
+  last_success_at: string | null;
+};
+
+export type CoverageReport = {
+  range: { start: string; end: string; label: string; bucket_seconds: number; generated_at: string };
+  totals: {
+    articles: number;
+    stories: number;
+    stories_all_active_outlets: number;
+    active_outlets: number;
+    duplicates_excluded: number;
+    undated_articles: number;
+    pending_review: number;
+    not_clustered: number;
+  };
+  outlets: OutletCoverageRow[];
+  timeline: { buckets: string[]; series: { outlet_id: number; counts: number[] }[] };
+  reach_distribution: { outlets: number; stories: number }[];
+  top_stories: Story[];
+  topic: string | null;
+  group: Group | null;
+  topics: { topic: string; label: string; by_outlet: Record<string, number>; total: number }[];
+  collection_interval_minutes: number;
+};
+
+export type CompareReport = {
+  bucket_seconds: number;
+  timeline: { buckets: string[]; series: { story_id: number; counts: number[] }[] };
+  stories: {
+    id: number;
+    title: string;
+    first_observed_at: string | null;
+    last_observed_at: string | null;
+    article_count: number;
+    outlets: { outlet_id: number; outlet_name: string; article_count: number; first_published_at: string }[];
+    articles: {
+      article_id: number;
+      outlet_name: string;
+      headline: string;
+      original_url: string;
+      published_at: string;
+      assignment_method: string;
+    }[];
+  }[];
 };
 
 export type CollectionRun = {
@@ -105,10 +203,38 @@ async function get<T>(path: string): Promise<T> {
   return res.json() as Promise<T>;
 }
 
+/** Como `get`, mas devolve a mensagem de erro da API (422) em vez de lançar. */
+async function getOrError<T>(path: string): Promise<{ data: T; error: null } | { data: null; error: string }> {
+  const res = await fetch(`${API_URL}${path}`, { cache: "no-store" });
+  if (res.ok) return { data: (await res.json()) as T, error: null };
+  let detail = `A API respondeu ${res.status}`;
+  try {
+    const body = await res.json();
+    if (typeof body?.detail === "string") detail = body.detail;
+  } catch {
+    /* corpo não é JSON */
+  }
+  return { data: null, error: detail };
+}
+
+function qs(params: Record<string, string | number | undefined | (string | number)[]>): string {
+  const q = new URLSearchParams();
+  for (const [k, v] of Object.entries(params)) {
+    if (v === undefined || v === "") continue;
+    for (const item of Array.isArray(v) ? v : [v]) q.append(k, String(item));
+  }
+  return q.toString();
+}
+
 export const getOutlets = () => get<Outlet[]>("/api/outlets");
-export const getStories = (window: Window) => get<Story[]>(`/api/stories?window=${window}`);
-export const getArticles = (window: Window, outletId?: number) =>
-  get<Article[]>(`/api/articles?window=${window}&limit=300${outletId ? `&outlet_id=${outletId}` : ""}`);
+export const getTopics = (window: Window) => get<Topic[]>(`/api/topics?window=${window}`);
+export const getStories = (window: Window, topic?: string) =>
+  get<Story[]>(`/api/stories?${qs({ window, topic })}`);
+export const getArticles = (window: Window, outletId?: number, topic?: string) =>
+  get<Article[]>(`/api/articles?${qs({ window, limit: 300, outlet_id: outletId, topic })}`);
+export const getCoverage = (p: { window?: string; from?: string; to?: string; topic?: string; group?: string }) =>
+  getOrError<CoverageReport>(`/api/coverage?${qs(p)}`);
+export const getCompare = (ids: number[]) => getOrError<CompareReport>(`/api/compare?${qs({ ids })}`);
 export const getCollectionRuns = () => get<CollectionRun[]>("/api/collection-runs?limit=60");
 
 export const getStory = (id: number) => get<StoryDetail>(`/api/stories/${id}`);

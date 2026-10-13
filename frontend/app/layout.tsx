@@ -15,6 +15,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <Link href="/" className="brand">PolitiFact BR</Link>
           <nav>
             <Link href="/">Histórias</Link>
+            <Link href="/cobertura">Cobertura</Link>
             <Link href="/noticias">Notícias</Link>
             <Link href="/revisao">Revisão</Link>
             <Link href="/coletas">Coletas</Link>

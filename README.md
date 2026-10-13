@@ -2,13 +2,15 @@
 
 Plataforma pessoal para acompanhar como os veículos brasileiros cobrem as histórias do dia e, nas fases finais, checar afirmações de políticos com evidências rastreáveis.
 
-O plano completo está no documento de arquitetura (fases 1 a 7). Este repositório está na **fase 3: deduplicação e agrupamento**.
+O plano completo está no documento de arquitetura (fases 1 a 7). Este repositório está na **fase 4: painel de cobertura** (com seções temáticas).
 
 ## Escopo atual
 
-- Veículos monitorados: Jovem Pan, CNN Brasil e BBC News Brasil.
-- Band: desativada por enquanto, porque não tem feed RSS público.
-- Fora do MVP: veículos em inglês, O Globo, Estadão e classificação política dos veículos.
+- **Nacionais (13 ativos):** Jovem Pan, CNN Brasil, Agência Brasil, Poder360, Metrópoles, CartaCapital, Gazeta do Povo, Revista Oeste, InfoMoney, g1, Folha de S.Paulo, Veja e UOL. Band desativada (sem RSS público).
+- **Internacionais (6):** BBC News Brasil, Bloomberg Línea Brasil, DW Brasil e RFI Brasil (em português); The Economist (seção The Americas) e The Guardian (página Brasil), em inglês, sem tradução.
+- Feeds de g1, Folha, Veja, UOL, DW, RFI, Economist e Guardian não puderam ser verificados na configuração; se falharem, o motivo aparece em **Coletas**. A lista completa e as notas estão em `backend/app/seed.py` e na tela **Veículos**.
+- Fora: Bloomberg em inglês (robots.txt proíbe coleta), Reuters e AP (sem RSS público), O Globo e Estadão (fora do escopo do MVP), classificação política dos veículos.
+- Coleta a cada 30 minutos (`COLLECT_INTERVAL_MINUTES`).
 - Tudo roda localmente, com custo próximo de zero.
 
 ## Stack
@@ -81,6 +83,14 @@ docker compose exec api python -m app.clustering.evaluate run data/gabarito.csv 
 
 O resultado mostra precisão (baixa = junta histórias diferentes), recall (baixo = separa a mesma história), F1, e quantos pares foram juntados ou separados por engano.
 
+### Seções (Política, Economia, Esportes...)
+
+Cada notícia recebe uma seção, nesta ordem: categoria declarada no feed, caminho da URL (`/politica/...`) ou palavras-chave do título e do resumo. A origem fica em `articles.topic_source`. A seção de uma história é a mais comum entre as suas notícias. As regras estão em `backend/app/topics.py`; depois de mudá-las:
+
+```bash
+docker compose exec api python -m app.topics_backfill --all
+```
+
 ### Mudar feeds ou ativar um veículo
 
 Edite `backend/app/seed.py` e rode `docker compose up -d` (o serviço `migrate` roda o seed de novo e atualiza os veículos existentes).
@@ -103,13 +113,16 @@ backend/
     seed.py        veículos monitorados e seus feeds
     ingestion/     normalização, parser RSS/Atom, download e coletor
     clustering/    deduplicação, embeddings, agrupamento, avaliação
+    coverage/      métricas de cobertura (períodos, linha do tempo, lacunas)
+    topics.py      classificação em seções
     tasks.py       jobs do worker (coleta e agrupamento, com lock no Redis)
     scheduler.py   agenda a coleta periódica
     worker.py      worker de jobs (RQ)
   alembic/         migrações
   tests/
 frontend/
-  app/             páginas (histórias, notícias, revisão, coletas e veículos)
+  app/             páginas (histórias, cobertura, comparar, notícias, revisão, coletas, veículos)
+  components/      gráficos em SVG (sem biblioteca externa) e abas de seção
   lib/api.ts       cliente da API
 docker-compose.yml
 ```
@@ -130,7 +143,15 @@ docker-compose.yml
 - Toda decisão (automática ou manual) fica em `clustering_decisions`. Correções manuais criam uma nova decisão e apontam a antiga para ela; nada é apagado.
 - Os limiares em `app/clustering/core.py` são palpites iniciais. Ajuste com o conjunto de teste.
 
+- Painel de cobertura (`/cobertura`): períodos de 24 h, 3 dias, 7 dias ou datas escolhidas (horário de SP), filtro por seção, linha do tempo por veículo, volume, alcance das histórias, histórias exclusivas, seções por veículo e uma seção de limitações (lacunas de coleta, feeds que podem ter "passado" notícias, notícias sem data, duplicatas, pendências de revisão).
+- "Tempo com coleta" considera lacuna qualquer intervalo maior que 2× o intervalo da coleta sem coleta bem-sucedida. Com o Mac desligado, a lacuna aparece.
+- Diferença de cobertura entre veículos nunca é apresentada como prova de omissão ou motivação.
+- Com muitos veículos, os gráficos usam uma cor só e a identidade vem do rótulo; a linha do tempo é um gráfico pequeno por veículo, todos na mesma escala. Cores categóricas só aparecem para até 3 séries (comparação de histórias), com paleta validada para daltonismo.
+- O painel filtra por grupo (nacionais / internacionais): veículos estrangeiros publicam pouco sobre o Brasil e pareceriam "ignorar" histórias numa comparação direta.
+- Notícias em inglês só se juntam às histórias em português com embeddings multilíngues (Ollama + `bge-m3`).
+
 ## Próximos passos
 
 1. Montar o conjunto de teste (cerca de 100 notícias) e ajustar o limiar de junção.
-2. Fase 4: dashboard de cobertura (linha do tempo, comparação entre veículos, limitações da coleta).
+2. Conferir as seções com dados reais e ajustar as regras de `app/topics.py`.
+3. Fase 5: análise de veículos e de enquadramento das notícias.

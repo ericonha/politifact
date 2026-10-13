@@ -1,22 +1,31 @@
 import Link from "next/link";
-import { WINDOWS, formatDate, getArticles, getOutlets, parseWindow } from "@/lib/api";
+import { TopicBadge, TopicTabs } from "@/components/TopicTabs";
+import { WINDOWS, formatDate, getArticles, getOutlets, getTopics, parseTopic, parseWindow } from "@/lib/api";
 
 export default async function ArticlesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ janela?: string; veiculo?: string }>;
+  searchParams: Promise<{ janela?: string; veiculo?: string; secao?: string }>;
 }) {
-  const { janela, veiculo } = await searchParams;
+  const { janela, veiculo, secao } = await searchParams;
   const win = parseWindow(janela);
+  const topic = parseTopic(secao);
   const outletId = veiculo ? Number(veiculo) || undefined : undefined;
-  const [articles, outlets] = await Promise.all([getArticles(win, outletId), getOutlets()]);
+  const [articles, outlets, topics] = await Promise.all([
+    getArticles(win, outletId, topic),
+    getOutlets(),
+    getTopics(win),
+  ]);
   const names = new Map(outlets.map((o) => [o.id, o.name]));
+  const english = new Set(outlets.filter((o) => o.language.startsWith("en")).map((o) => o.id));
 
-  const href = (params: { janela?: string; veiculo?: number }) => {
+  const href = (params: { janela?: string; veiculo?: number; secao?: string | null }) => {
     const q = new URLSearchParams();
     q.set("janela", params.janela ?? win);
     const v = "veiculo" in params ? params.veiculo : outletId;
     if (v) q.set("veiculo", String(v));
+    const t = params.secao === null ? undefined : params.secao ?? topic;
+    if (t) q.set("secao", t);
     return `/noticias?${q}`;
   };
 
@@ -36,17 +45,28 @@ export default async function ArticlesPage({
         </div>
       </div>
 
-      <div className="tabs filters">
-        <Link href={href({ veiculo: undefined })} className={!outletId ? "tab active" : "tab"}>
-          Todos
-        </Link>
-        {outlets.filter((o) => o.active).map((o) => (
-          <Link key={o.id} href={href({ veiculo: o.id })} className={outletId === o.id ? "tab active" : "tab"}>
-            {o.name}
-            {!outletId && <span className="count">{counts.get(o.id) ?? 0}</span>}
-          </Link>
-        ))}
-      </div>
+      <TopicTabs current={topic} topics={topics} href={(t) => href({ secao: t ?? null })} />
+
+      <form action="/noticias" method="get" className="filter-row">
+        <input type="hidden" name="janela" value={win} />
+        {topic && <input type="hidden" name="secao" value={topic} />}
+        <label className="muted">
+          Veículo{" "}
+          <select name="veiculo" defaultValue={outletId ? String(outletId) : ""} className="select">
+            <option value="">Todos os veículos</option>
+            {["nacional", "internacional"].map((g) => (
+              <optgroup key={g} label={g === "nacional" ? "Nacionais" : "Internacionais"}>
+                {outlets.filter((o) => o.active && o.outlet_group === g).map((o) => (
+                  <option key={o.id} value={o.id}>
+                    {o.name}{!outletId ? ` (${counts.get(o.id) ?? 0})` : ""}
+                  </option>
+                ))}
+              </optgroup>
+            ))}
+          </select>
+        </label>
+        <button type="submit" className="button small secondary">Filtrar</button>
+      </form>
 
       <p className="note">
         {articles.length} notícias publicadas no período, pela data de publicação informada no feed.
@@ -64,6 +84,8 @@ export default async function ArticlesPage({
             <li key={a.id}>
               <div className="meta">
                 <span className="outlet">{names.get(a.outlet_id) ?? "?"}</span>
+                {english.has(a.outlet_id) && <span className="lang-badge">EN</span>}
+                {!topic && <TopicBadge topic={a.topic} />}
                 <span>{formatDate(a.published_at)}</span>
               </div>
               <a href={a.original_url} target="_blank" rel="noopener noreferrer" className="headline">

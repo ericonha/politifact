@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { TopicBadge } from "@/components/TopicTabs";
 import { formatDate, getStory, type StoryArticle } from "@/lib/api";
 
 const METHOD_LABEL: Record<StoryArticle["assignment_method"], string> = {
@@ -27,10 +28,15 @@ export default async function StoryPage({ params }: { params: Promise<{ id: stri
   return (
     <>
       <p className="muted"><Link href="/">← Histórias</Link></p>
+      <TopicBadge topic={story.topic} />
       <h1>{story.title}</h1>
       <p className="note">
         {story.article_count} notícias em {story.outlet_count} veículos · de{" "}
         {formatDate(story.first_observed_at)} a {formatDate(story.last_observed_at)}
+      </p>
+
+      <p className="note">
+        <Link href={`/comparar?ids=${story.id}`}>Comparar com outra história →</Link>
       </p>
 
       <div className="outlet-columns">

@@ -9,7 +9,7 @@ class Settings(BaseSettings):
     database_url: str = "postgresql+psycopg://politifact:politifact@localhost:5432/politifact"
     redis_url: str = "redis://localhost:6379/0"
     cors_origins: str = "http://localhost:3000"
-    collect_interval_minutes: int = 30
+    collect_interval_minutes: int = 30  # pedido do usuário: coletar a cada 30 min
     embeddings_enabled: bool = True
     embeddings_url: str = "http://host.docker.internal:11434"
     embeddings_model: str = "bge-m3"

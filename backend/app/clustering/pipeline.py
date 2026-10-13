@@ -24,6 +24,8 @@ from app.clustering.core import (
 )
 from app.clustering.embeddings import Embedder, EmbeddingError, article_text
 from app.models import Article, ClusteringDecision, Story, StoryArticle
+from app.topics import classify
+from app.topics_store import refresh_story_topics
 
 log = logging.getLogger(__name__)
 
@@ -119,6 +121,13 @@ def process_new_articles(
         return stats
 
     earliest = min(article_time(a) for a in new)
+
+    # Garante seção em todo artigo (os coletados antes da fase de seções não têm).
+    for a in new:
+        if a.topic is None:
+            r = classify(a.original_url, a.feed_categories, a.headline, a.summary,
+                         foreign=a.outlet.outlet_group == "internacional")
+            a.topic, a.topic_source = r.topic, r.source
 
     # 1) Deduplicação, em ordem: um artigo pode ser duplicata de outro do mesmo lote.
     pool = [
@@ -220,6 +229,8 @@ def process_new_articles(
         stats.duplicates += 1
         stats.processed += 1
 
+    session.flush()
+    refresh_story_topics(session, set(story_of_article.values()) | set(stories_by_id))
     session.commit()
     log.info("processamento: %s", stats)
     return stats

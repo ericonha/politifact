@@ -1,4 +1,4 @@
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 
 from fastapi import Depends, FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
@@ -21,6 +21,7 @@ from app.schemas import (
     StoryArticleOut,
     StoryDetailOut,
     StoryOut,
+    TopicOut,
 )
 
 app = FastAPI(title="PolitiFact BR", version="0.1.0")
@@ -69,6 +70,7 @@ def get_outlet(outlet_id: int, session: Session = Depends(get_session)) -> Outle
 @app.get("/api/stories", response_model=list[StoryOut])
 def list_stories(
     window: str = Query("24h", pattern="^(24h|3d|7d)$"),
+    topic: str | None = None,
     session: Session = Depends(get_session),
 ) -> list[StoryOut]:
     """Histórias com artigos publicados na janela (pela data de publicação, não de descoberta).
@@ -97,7 +99,10 @@ def list_stories(
     if not coverage:
         return []
 
-    stories = session.scalars(select(Story).where(Story.id.in_(coverage))).all()
+    story_q = select(Story).where(Story.id.in_(coverage))
+    if topic:
+        story_q = story_q.where(Story.topic == topic)
+    stories = session.scalars(story_q).all()
     result = [
         StoryOut.model_validate(s).model_copy(
             update={
@@ -130,6 +135,7 @@ def story_articles(story_id: int, session: Session = Depends(get_session)) -> li
 def list_articles(
     window: str = Query("24h", pattern="^(24h|3d|7d)$"),
     outlet_id: int | None = None,
+    topic: str | None = None,
     limit: int = Query(100, ge=1, le=500),
     session: Session = Depends(get_session),
 ) -> list[Article]:
@@ -142,6 +148,8 @@ def list_articles(
     stmt = select(Article).where(Article.published_at >= since)
     if outlet_id is not None:
         stmt = stmt.where(Article.outlet_id == outlet_id)
+    if topic:
+        stmt = stmt.where(Article.topic == topic)
     stmt = stmt.order_by(Article.published_at.desc()).limit(limit)
     return list(session.scalars(stmt))
 
@@ -194,6 +202,7 @@ def get_story(story_id: int, session: Session = Depends(get_session)) -> StoryDe
             article_id=a.id, outlet_id=a.outlet_id, outlet_name=name, headline=a.headline,
             summary=a.summary, original_url=a.original_url, published_at=a.published_at,
             assignment_method=method, cluster_confidence=conf,
+            topic=a.topic, topic_source=a.topic_source,
         )
         for a, name, method, conf in rows
     ]
@@ -283,6 +292,10 @@ def resolve_review(
     session.flush()
     original.resolved_at = datetime.now(UTC)
     original.resolved_by_id = correction.id
+    from app.topics_store import refresh_story_topics
+
+    session.flush()
+    refresh_story_topics(session, [story.id])
     session.commit()
     return ReviewActionOut(decision_id=correction.id, story_id=story.id)
 
@@ -296,3 +309,60 @@ def trigger_processing() -> EnqueuedOut:
     queue = Queue("default", connection=Redis.from_url(get_settings().redis_url))
     job = queue.enqueue("app.tasks.process_articles_job", job_timeout=30 * 60)
     return EnqueuedOut(job_id=job.id)
+
+
+@app.get("/api/coverage")
+def coverage(
+    window: str | None = Query(None, pattern="^(24h|3d|7d)$"),
+    date_from: date | None = Query(None, alias="from"),
+    date_to: date | None = Query(None, alias="to"),
+    topic: str | None = None,
+    group: str | None = Query(None, pattern="^(nacional|internacional)$"),
+    session: Session = Depends(get_session),
+) -> dict:
+    """Painel de cobertura: preset (window) ou intervalo de datas (from/to, horário de SP)."""
+    from app.coverage.metrics import RangeError, resolve_range
+    from app.coverage.queries import coverage_report
+
+    now = datetime.now(UTC)
+    try:
+        r = resolve_range(window, date_from, date_to, now)
+    except RangeError as exc:
+        raise HTTPException(422, str(exc)) from exc
+    return coverage_report(session, r, now, topic, group)
+
+
+@app.get("/api/compare")
+def compare(
+    ids: list[int] = Query(..., min_length=2, max_length=3),
+    session: Session = Depends(get_session),
+) -> dict:
+    """Compara de 2 a 3 histórias: quem cobriu, quando, e o volume ao longo do tempo."""
+    from app.coverage.queries import compare_stories
+
+    unique = list(dict.fromkeys(ids))
+    if len(unique) < 2:
+        raise HTTPException(422, "Escolha pelo menos 2 histórias diferentes")
+    try:
+        return compare_stories(session, unique)
+    except KeyError as exc:
+        raise HTTPException(404, f"Histórias não encontradas: {exc.args[0]}") from exc
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
+
+
+@app.get("/api/topics", response_model=list[TopicOut])
+def list_topics(
+    window: str = Query("24h", pattern="^(24h|3d|7d)$"),
+    session: Session = Depends(get_session),
+) -> list[TopicOut]:
+    """Seções, na ordem fixa, com o número de notícias publicadas no período."""
+    from app.topics import TOPICS
+
+    since = datetime.now(UTC) - WINDOWS[window]
+    counts = dict(session.execute(
+        select(Article.topic, func.count())
+        .where(Article.published_at >= since, Article.duplicate_of_id.is_(None))
+        .group_by(Article.topic)
+    ).all())
+    return [TopicOut(key=k, label=v, article_count=counts.get(k, 0)) for k, v in TOPICS.items()]

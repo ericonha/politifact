@@ -11,5 +11,6 @@
     <published>2026-10-12T09:30:00Z</published>
     <updated>2026-10-12T11:00:00Z</updated>
     <summary>IPCA veio abaixo do esperado.</summary>
+    <category term="economia" label="Economia"/>
   </entry>
 </feed>

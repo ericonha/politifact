@@ -45,6 +45,7 @@ class Outlet(Base):
     feed_urls: Mapped[list[str]] = mapped_column(JSONB, default=list)
     collection_notes: Mapped[str | None] = mapped_column(Text)
     active: Mapped[bool] = mapped_column(default=True)
+    outlet_group: Mapped[str] = mapped_column(String(16), default="nacional", index=True)  # nacional | internacional
     created_at: Mapped[datetime] = _now_col()
 
     articles: Mapped[list["Article"]] = relationship(back_populates="outlet")
@@ -97,6 +98,9 @@ class Article(Base):
     embedding_model: Mapped[str | None] = mapped_column(String(128))
     duplicate_of_id: Mapped[int | None] = mapped_column(ForeignKey("articles.id"), index=True)
     duplicate_method: Mapped[str | None] = mapped_column(String(32))
+    feed_categories: Mapped[list[str] | None] = mapped_column(JSONB)
+    topic: Mapped[str | None] = mapped_column(String(32), index=True)  # ver app/topics.py
+    topic_source: Mapped[str | None] = mapped_column(String(16))  # feed | url | keywords | none
 
     outlet: Mapped[Outlet] = relationship(back_populates="articles")
     story_links: Mapped[list["StoryArticle"]] = relationship(back_populates="article")
@@ -110,6 +114,7 @@ class Story(Base):
     summary: Mapped[str | None] = mapped_column(Text)
     first_observed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     last_observed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), index=True)
+    topic: Mapped[str | None] = mapped_column(String(32), index=True)
     created_at: Mapped[datetime] = _now_col()
     updated_at: Mapped[datetime] = _now_col(onupdate=func.now())
 
