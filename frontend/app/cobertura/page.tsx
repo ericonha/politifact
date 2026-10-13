@@ -2,14 +2,16 @@ import Link from "next/link";
 import { BarChart } from "@/components/charts/BarChart";
 import { ColumnChart } from "@/components/charts/ColumnChart";
 import { SmallMultiples } from "@/components/charts/SmallMultiples";
-import { TopicBadge, TopicTabs } from "@/components/TopicTabs";
+import { PageLayout, Sidebar } from "@/components/Sidebar";
+import { TopicBadge } from "@/components/TopicTabs";
 import {
-  GROUPS,
   TOPIC_LABELS,
-  WINDOWS,
   formatDate,
+  getCollectionStatus,
   getCoverage,
+  getOutlets,
   parseGroup,
+  parseOutletChoice,
   parseTopic,
   parseWindow,
   type CoverageReport,
@@ -17,7 +19,7 @@ import {
 } from "@/lib/api";
 import { bucketRangeLabel } from "@/lib/chart-utils";
 
-type SP = { janela?: string; de?: string; ate?: string; secao?: string; grupo?: string };
+type SP = { janela?: string; de?: string; ate?: string; secao?: string; grupo?: string; veiculo?: string; favoritos?: string };
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const ONE_HUE = "var(--series-1)";
@@ -45,72 +47,52 @@ export default async function CoveragePage({ searchParams }: { searchParams: Pro
   const sp = await searchParams;
   const topic = parseTopic(sp.secao);
   const group = parseGroup(sp.grupo);
+  const choice = parseOutletChoice(sp);
   const custom = !!(sp.de && sp.ate && DATE_RE.test(sp.de) && DATE_RE.test(sp.ate));
   const win = parseWindow(sp.janela);
-  const { data, error } = await getCoverage(
-    custom ? { from: sp.de, to: sp.ate, topic, group } : { window: win, topic, group },
-  );
+  const filters = {
+    topic,
+    group,
+    outlet_id: choice.outletId,
+    favorites: choice.favorites && !choice.outletId ? "true" : undefined,
+  };
+  const [{ data, error }, outlets, status] = await Promise.all([
+    getCoverage(custom ? { from: sp.de, to: sp.ate, ...filters } : { window: win, ...filters }),
+    getOutlets(),
+    getCollectionStatus(),
+  ]);
 
-  const href = (p: { janela?: string; secao?: string | null; grupo?: Group | null }) => {
+  const params = { ...sp, de: custom ? sp.de : undefined, ate: custom ? sp.ate : undefined };
+  const topicHref = (t: string) => {
     const q = new URLSearchParams();
-    if (p.janela) q.set("janela", p.janela);
-    else if (custom) {
-      q.set("de", sp.de!);
-      q.set("ate", sp.ate!);
-    } else q.set("janela", win);
-    const t = p.secao === null ? undefined : p.secao ?? topic;
-    if (t) q.set("secao", t);
-    const g = p.grupo === null ? undefined : p.grupo ?? group;
-    if (g) q.set("grupo", g);
+    for (const [k, v] of Object.entries({ ...params, secao: t })) if (v) q.set(k, v);
     return `/cobertura?${q}`;
   };
 
   return (
-    <>
-      <div className="toolbar">
-        <h1>Cobertura{topic ? ` · ${TOPIC_LABELS[topic]}` : ""}</h1>
-        <div className="tabs" aria-label="Grupo de veículos">
-          {GROUPS.map((g) => (
-            <Link
-              key={g.label}
-              href={href({ grupo: g.value ?? null })}
-              className={g.value === group ? "tab active" : "tab"}
-            >
-              {g.label}
-            </Link>
-          ))}
-        </div>
-      </div>
-
-      <div className="filter-row">
-        <div className="tabs">
-          {WINDOWS.map((w) => (
-            <Link key={w.value} href={href({ janela: w.value })} className={!custom && w.value === win ? "tab active" : "tab"}>
-              {w.label}
-            </Link>
-          ))}
-        </div>
-        <form action="/cobertura" method="get">
-          <label>
-            de <input type="date" name="de" defaultValue={custom ? sp.de : ""} required />
-          </label>
-          <label>
-            até <input type="date" name="ate" defaultValue={custom ? sp.ate : ""} required />
-          </label>
-          {topic && <input type="hidden" name="secao" value={topic} />}
-          {group && <input type="hidden" name="grupo" value={group} />}
-          <button type="submit" className={custom ? "button small" : "button small secondary"}>Aplicar</button>
-        </form>
-      </div>
-
-      <TopicTabs current={topic} href={(t) => href({ secao: t ?? null })} />
-
+    <PageLayout
+      sidebar={
+        <Sidebar
+          title="Cobertura"
+          intro="Quem cobriu o quê, quando, e o que pode estar faltando na coleta."
+          basePath="/cobertura"
+          params={params}
+          status={status}
+          period
+          customRange
+          topics
+          group
+          outlets={outlets}
+        />
+      }
+    >
+      {topic && <h2 className="front-section-title" style={{ marginTop: 0 }}>{TOPIC_LABELS[topic]}</h2>}
       {error || !data ? (
         <div className="empty">Não foi possível montar o painel: {error ?? "erro desconhecido"}</div>
       ) : (
-        <Dashboard data={data} topic={topic} group={group} topicHref={(t) => href({ secao: t })} />
+        <Dashboard data={data} topic={topic} group={group} topicHref={topicHref} />
       )}
-    </>
+    </PageLayout>
   );
 }
 

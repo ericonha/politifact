@@ -1,5 +1,6 @@
+import { PageLayout, Sidebar } from "@/components/Sidebar";
 import { revalidatePath } from "next/cache";
-import { formatDate, getCollectionRuns, getOutlets, triggerCollection } from "@/lib/api";
+import { formatDate, getCollectionRuns, getCollectionStatus, getOutlets, triggerCollection } from "@/lib/api";
 
 const STATUS_LABEL: Record<string, string> = {
   running: "Rodando",
@@ -16,13 +17,13 @@ async function collectNow() {
 
 export default async function CollectionRunsPage() {
   const [runs, outlets] = await Promise.all([getCollectionRuns(), getOutlets()]);
+  const status = await getCollectionStatus();
   const names = new Map(outlets.map((o) => [o.id, o.name]));
   const inactive = outlets.filter((o) => !o.active);
 
   return (
-    <>
+    <PageLayout sidebar={<Sidebar title="Coletas" intro="Cada execução da coleta, com o que veio de cada veículo e os erros." basePath="/coletas" params={{}} status={status} />}>
       <div className="toolbar">
-        <h1>Coletas</h1>
         <form action={collectNow}>
           <button type="submit" className="button">Coletar agora</button>
         </form>
@@ -69,6 +70,6 @@ export default async function CollectionRunsPage() {
           </tbody>
         </table>
       )}
-    </>
+    </PageLayout>
   );
 }

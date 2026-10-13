@@ -81,3 +81,33 @@ def test_coverage_by_group() -> None:
 def test_all_seeded_outlets_have_group() -> None:
     outlets = client.get("/api/outlets").json()
     assert {o["outlet_group"] for o in outlets} <= {"nacional", "internacional"}
+
+
+def test_framing_and_ratings_endpoints() -> None:
+    assert client.get("/api/stories/999999999/framing").status_code == 404
+    assert client.get("/api/articles/999999999/analysis").status_code == 404
+    r = client.get("/api/ratings")
+    assert r.status_code == 200 and isinstance(r.json(), list)
+
+
+def test_favorite_toggle_and_filters() -> None:
+    outlets = client.get("/api/outlets").json()
+    target = outlets[0]
+    try:
+        r = client.post(f"/api/outlets/{target['id']}/favorite", json={"favorite": True})
+        assert r.status_code == 200 and r.json()["favorite"] is True
+        assert client.get("/api/stories?favorites=true").status_code == 200
+        assert client.get("/api/articles?favorites=true").status_code == 200
+        body = client.get("/api/coverage?window=24h&favorites=true").json()
+        favs = {x["id"] for x in client.get("/api/outlets").json() if x["favorite"]}
+        returned = {o["id"] for o in body["outlets"]}
+        assert target["id"] in returned and returned <= favs
+        assert client.get(f"/api/stories?outlet_id={target['id']}").status_code == 200
+    finally:
+        client.post(f"/api/outlets/{target['id']}/favorite", json={"favorite": target["favorite"]})
+    assert client.post("/api/outlets/999999/favorite", json={"favorite": True}).status_code == 404
+
+
+def test_collection_status() -> None:
+    body = client.get("/api/collection-status").json()
+    assert {"last_success_at", "running", "interval_minutes", "next_expected_at", "failing_outlets"} <= body.keys()

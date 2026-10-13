@@ -13,6 +13,10 @@ class Settings(BaseSettings):
     embeddings_enabled: bool = True
     embeddings_url: str = "http://host.docker.internal:11434"
     embeddings_model: str = "bge-m3"
+    # LLM local para a análise de enquadramento (fase 5). Usa o mesmo Ollama dos embeddings.
+    llm_enabled: bool = True
+    llm_model: str = "qwen2.5:7b"
+    llm_articles_per_run: int = 30
 
     @property
     def cors_origin_list(self) -> list[str]:

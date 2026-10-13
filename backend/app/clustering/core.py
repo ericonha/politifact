@@ -41,7 +41,7 @@ _STOPWORDS = set(
 
 # Palavras que começam frase em maiúscula mas não são nomes próprios.
 _TITLES = {"governo", "presidente", "ministro", "ministra", "deputado", "deputada", "senador", "senadora"}
-_CAPITALIZED_NOISE = _STOPWORDS | _TITLES
+_CAPITALIZED_NOISE = _STOPWORDS | _TITLES | {"brazil", "brazilian", "brazilians", "the"}
 # Só estas são removidas do início de um nome composto ("O Banco Central" -> "banco central");
 # verbos como "são" ficam, para não estragar "São Paulo".
 _LEADING_NOISE = {"o", "a", "os", "as", "um", "uma", "em", "no", "na", "nos", "nas",
@@ -64,13 +64,22 @@ def tokens(text: str) -> frozenset[str]:
     )
 
 
-def entities(text: str) -> frozenset[str]:
-    """Nomes próprios e siglas por heurística (sem modelo de NER).
+def entity_mentions(text: str) -> list[tuple[str, str]]:
+    """Como `entities_ordered`, mas devolve (chave normalizada, forma como aparece no texto)."""
+    return _entities(text)
+
+
+def entities_ordered(text: str) -> list[str]:
+    return [key for key, _ in _entities(text)]
+
+
+def _entities(text: str) -> list[tuple[str, str]]:
+    """Nomes próprios e siglas por heurística (sem modelo de NER), na ordem em que aparecem.
 
     Pega sequências de palavras com inicial maiúscula ("Banco Central",
-    "Alexandre de Moraes") e siglas ("STF", "PT").
+    "Alexandre de Moraes") e siglas ("STF", "PT"). Sem repetição.
     """
-    found: set[str] = set()
+    found: list[tuple[int, str, str]] = []
     pattern = r"[A-ZÀ-Ý][\wÀ-ÿ'-]*(?:\s+(?:(?:de|da|do|dos|das)\s+)?[A-ZÀ-Ý][\wÀ-ÿ'-]*)*"
     for match in re.finditer(pattern, text):
         phrase = match.group(0).strip()
@@ -78,14 +87,26 @@ def entities(text: str) -> frozenset[str]:
         if len(norm) < 2 or norm in _CAPITALIZED_NOISE:
             continue
         parts = norm.split()
+        surface_parts = phrase.split()
         while len(parts) > 1 and parts[0] in _LEADING_NOISE:
             parts.pop(0)
+            surface_parts.pop(0)
         joined = " ".join(parts)
         if joined not in _CAPITALIZED_NOISE:
-            found.add(joined)
-    for acronym in re.findall(r"\b[A-Z]{2,6}\b", text):
-        found.add(acronym.lower())
-    return frozenset(found)
+            found.append((match.start(), joined, " ".join(surface_parts)))
+    for match in re.finditer(r"\b[A-Z]{2,6}\b", text):
+        found.append((match.start(), match.group(0).lower(), match.group(0)))
+    seen: set[str] = set()
+    ordered: list[tuple[str, str]] = []
+    for _, key, surface in sorted(found):
+        if key not in seen:
+            seen.add(key)
+            ordered.append((key, surface))
+    return ordered
+
+
+def entities(text: str) -> frozenset[str]:
+    return frozenset(entities_ordered(text))
 
 
 @dataclass(frozen=True)

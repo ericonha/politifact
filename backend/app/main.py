@@ -22,6 +22,8 @@ from app.schemas import (
     StoryDetailOut,
     StoryOut,
     TopicOut,
+    FavoriteIn,
+    CollectionStatusOut,
 )
 
 app = FastAPI(title="PolitiFact BR", version="0.1.0")
@@ -33,6 +35,15 @@ app.add_middleware(
 )
 
 WINDOWS = {"24h": timedelta(hours=24), "3d": timedelta(days=3), "7d": timedelta(days=7)}
+
+
+def _outlet_filter(session: Session, outlet_id: int | None, favorites: bool) -> set[int] | None:
+    """Veículos escolhidos: um veículo, os favoritos, ou None (todos)."""
+    if outlet_id is not None:
+        return {outlet_id}
+    if favorites:
+        return set(session.scalars(select(Outlet.id).where(Outlet.favorite.is_(True))))
+    return None
 
 
 @app.get("/api/health", response_model=HealthOut)
@@ -71,6 +82,8 @@ def get_outlet(outlet_id: int, session: Session = Depends(get_session)) -> Outle
 def list_stories(
     window: str = Query("24h", pattern="^(24h|3d|7d)$"),
     topic: str | None = None,
+    outlet_id: int | None = None,
+    favorites: bool = False,
     session: Session = Depends(get_session),
 ) -> list[StoryOut]:
     """Histórias com artigos publicados na janela (pela data de publicação, não de descoberta).
@@ -96,6 +109,10 @@ def list_stories(
         coverage.setdefault(story_id, []).append(
             OutletCoverage(outlet_id=outlet_id, outlet_name=outlet_name, article_count=count)
         )
+    wanted = _outlet_filter(session, outlet_id, favorites)
+    if wanted is not None:
+        # Histórias que pelo menos um dos veículos escolhidos cobriu (a cobertura mostrada continua completa).
+        coverage = {sid: c for sid, c in coverage.items() if any(x.outlet_id in wanted for x in c)}
     if not coverage:
         return []
 
@@ -136,6 +153,7 @@ def list_articles(
     window: str = Query("24h", pattern="^(24h|3d|7d)$"),
     outlet_id: int | None = None,
     topic: str | None = None,
+    favorites: bool = False,
     limit: int = Query(100, ge=1, le=500),
     session: Session = Depends(get_session),
 ) -> list[Article]:
@@ -150,6 +168,8 @@ def list_articles(
         stmt = stmt.where(Article.outlet_id == outlet_id)
     if topic:
         stmt = stmt.where(Article.topic == topic)
+    if favorites and outlet_id is None:
+        stmt = stmt.where(Article.outlet_id.in_(select(Outlet.id).where(Outlet.favorite.is_(True))))
     stmt = stmt.order_by(Article.published_at.desc()).limit(limit)
     return list(session.scalars(stmt))
 
@@ -318,6 +338,8 @@ def coverage(
     date_to: date | None = Query(None, alias="to"),
     topic: str | None = None,
     group: str | None = Query(None, pattern="^(nacional|internacional)$"),
+    outlet_id: int | None = None,
+    favorites: bool = False,
     session: Session = Depends(get_session),
 ) -> dict:
     """Painel de cobertura: preset (window) ou intervalo de datas (from/to, horário de SP)."""
@@ -329,7 +351,8 @@ def coverage(
         r = resolve_range(window, date_from, date_to, now)
     except RangeError as exc:
         raise HTTPException(422, str(exc)) from exc
-    return coverage_report(session, r, now, topic, group)
+    wanted = _outlet_filter(session, outlet_id, favorites)
+    return coverage_report(session, r, now, topic, group, sorted(wanted) if wanted is not None else None)
 
 
 @app.get("/api/compare")
@@ -366,3 +389,157 @@ def list_topics(
         .group_by(Article.topic)
     ).all())
     return [TopicOut(key=k, label=v, article_count=counts.get(k, 0)) for k, v in TOPICS.items()]
+
+
+@app.get("/api/stories/{story_id}/framing")
+def story_framing(story_id: int, session: Session = Depends(get_session)) -> dict:
+    """Manchetes da história lado a lado, com a análise observável e (se houver) a do LLM.
+
+    Usa a versão mais recente de cada tipo de análise. A comparação descreve
+    diferenças no texto, nunca intenção ou viés do veículo.
+    """
+    from app.framing import observable as obs_mod
+    from app.framing.compare import compare
+    from app.framing.llm import PROMPT_VERSION
+    from app.models import ArticleAnalysis
+
+    if session.get(Story, story_id) is None:
+        raise HTTPException(404, "História não encontrada")
+    rows = session.execute(
+        select(Article, Outlet.name, Outlet.language)
+        .join(StoryArticle, StoryArticle.article_id == Article.id)
+        .join(Outlet, Outlet.id == Article.outlet_id)
+        .where(StoryArticle.story_id == story_id)
+        .order_by(func.coalesce(Article.published_at, Article.first_seen_at))
+    ).all()
+    ids = [a.id for a, _, _ in rows]
+    analyses: dict[tuple[int, str], ArticleAnalysis] = {}
+    if ids:
+        for an in session.scalars(
+            select(ArticleAnalysis)
+            .where(ArticleAnalysis.article_id.in_(ids), ArticleAnalysis.result.is_not(None))
+            .order_by(ArticleAnalysis.created_at)
+        ):
+            analyses[(an.article_id, an.analysis_type)] = an  # a mais recente vence
+
+    items = []
+    for a, outlet_name, language in rows:
+        obs = analyses.get((a.id, "observable"))
+        observable = obs.result if obs else obs_mod.analyze(a.headline, a.summary)
+        llm = analyses.get((a.id, "llm"))
+        items.append({
+            "article_id": a.id,
+            "outlet_name": outlet_name,
+            "language": language,
+            "headline": a.headline,
+            "summary": a.summary,
+            "original_url": a.original_url,
+            "published_at": a.published_at,
+            "observable": observable,
+            "llm": None if llm is None else {
+                **llm.result,
+                "validation": llm.validation,
+                "model": llm.analysis_model,
+                "prompt_version": llm.prompt_version,
+                "created_at": llm.created_at,
+            },
+        })
+    return {
+        "story_id": story_id,
+        "items": items,
+        "comparison": compare([{"outlet": i["outlet_name"], "observable": i["observable"]} for i in items]),
+        "llm_prompt_version": PROMPT_VERSION,
+    }
+
+
+@app.get("/api/articles/{article_id}/analysis")
+def article_analysis(article_id: int, session: Session = Depends(get_session)) -> list[dict]:
+    """Todas as análises de uma notícia, em ordem (histórico completo)."""
+    from app.models import ArticleAnalysis
+
+    if session.get(Article, article_id) is None:
+        raise HTTPException(404, "Artigo não encontrado")
+    return [
+        {
+            "id": an.id, "type": an.analysis_type, "result": an.result, "validation": an.validation,
+            "model": an.analysis_model, "prompt_version": an.prompt_version, "created_at": an.created_at,
+        }
+        for an in session.scalars(
+            select(ArticleAnalysis).where(ArticleAnalysis.article_id == article_id).order_by(ArticleAnalysis.created_at)
+        )
+    ]
+
+
+@app.get("/api/ratings")
+def outlet_ratings(session: Session = Depends(get_session)) -> list[dict]:
+    """Avaliações de orientação, sempre com avaliador, metodologia e data (histórico completo)."""
+    from app.models import OutletBiasRating
+    from app.ratings import LABELS
+
+    return [
+        {
+            "outlet_id": r.outlet_id, "provider": r.provider, "rating": r.rating,
+            "rating_label": LABELS.get(r.rating, r.rating), "methodology_url": r.methodology_url,
+            "reference_url": r.reference_url, "assessed_at": r.assessed_at, "valid_from": r.valid_from,
+            "valid_until": r.valid_until, "confidence": r.confidence, "notes": r.notes,
+        }
+        for r in session.scalars(select(OutletBiasRating).order_by(OutletBiasRating.outlet_id,
+                                                                     OutletBiasRating.assessed_at))
+    ]
+
+
+@app.post("/api/framing", response_model=EnqueuedOut, status_code=202)
+def trigger_framing() -> EnqueuedOut:
+    """Dispara a análise de enquadramento agora."""
+    from redis import Redis
+    from rq import Queue
+
+    queue = Queue("default", connection=Redis.from_url(get_settings().redis_url))
+    job = queue.enqueue("app.tasks.framing_job", job_timeout=60 * 60)
+    return EnqueuedOut(job_id=job.id)
+
+
+@app.post("/api/outlets/{outlet_id}/favorite", response_model=OutletOut)
+def set_favorite(outlet_id: int, body: FavoriteIn, session: Session = Depends(get_session)) -> Outlet:
+    outlet = session.get(Outlet, outlet_id)
+    if outlet is None:
+        raise HTTPException(404, "Veículo não encontrado")
+    outlet.favorite = body.favorite
+    session.commit()
+    return outlet
+
+
+@app.get("/api/collection-status", response_model=CollectionStatusOut)
+def collection_status(session: Session = Depends(get_session)) -> CollectionStatusOut:
+    """Quando foi a última coleta, se há uma rodando e quando vem a próxima."""
+    interval = get_settings().collect_interval_minutes
+    last_success = session.scalar(
+        select(func.max(CollectionRun.finished_at)).where(CollectionRun.status.in_(["success", "partial"]))
+    )
+    last_run = session.scalars(select(CollectionRun).order_by(CollectionRun.started_at.desc()).limit(1)).first()
+    now = datetime.now(UTC)
+    running = session.scalar(
+        select(func.count()).select_from(CollectionRun).where(
+            CollectionRun.status == "running", CollectionRun.started_at >= now - timedelta(minutes=30))
+    ) > 0
+    # Veículos ativos cuja coleta mais recente falhou.
+    latest = (
+        select(CollectionRun.outlet_id, func.max(CollectionRun.started_at).label("t"))
+        .group_by(CollectionRun.outlet_id).subquery()
+    )
+    failing = session.scalars(
+        select(Outlet.name)
+        .join(latest, latest.c.outlet_id == Outlet.id)
+        .join(CollectionRun, (CollectionRun.outlet_id == Outlet.id) & (CollectionRun.started_at == latest.c.t))
+        .where(Outlet.active.is_(True), CollectionRun.status == "failed")
+        .order_by(Outlet.name)
+    ).all()
+    return CollectionStatusOut(
+        last_success_at=last_success,
+        last_run_started_at=last_run.started_at if last_run else None,
+        last_run_status=last_run.status if last_run else None,
+        running=running,
+        interval_minutes=interval,
+        next_expected_at=(last_run.started_at + timedelta(minutes=interval)) if last_run else None,
+        failing_outlets=list(failing),
+    )

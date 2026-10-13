@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { HeadlineComparison } from "@/components/HeadlineComparison";
 import { TopicBadge } from "@/components/TopicTabs";
-import { formatDate, getStory, type StoryArticle } from "@/lib/api";
+import { PageLayout, Sidebar } from "@/components/Sidebar";
+import { formatDate, getCollectionStatus, getStory, getStoryFraming, type StoryArticle } from "@/lib/api";
 
 const METHOD_LABEL: Record<StoryArticle["assignment_method"], string> = {
   seed: "primeira notícia",
@@ -15,7 +17,11 @@ export default async function StoryPage({ params }: { params: Promise<{ id: stri
   const storyId = Number(id);
   if (!Number.isInteger(storyId)) notFound();
 
-  const story = await getStory(storyId).catch(() => null);
+  const [story, framing, status] = await Promise.all([
+    getStory(storyId).catch(() => null),
+    getStoryFraming(storyId).catch(() => null),
+    getCollectionStatus(),
+  ]);
   if (!story) notFound();
 
   const byOutlet = new Map<string, StoryArticle[]>();
@@ -26,10 +32,19 @@ export default async function StoryPage({ params }: { params: Promise<{ id: stri
   }
 
   return (
-    <>
-      <p className="muted"><Link href="/">← Histórias</Link></p>
+    <PageLayout
+      sidebar={
+        <Sidebar
+          title="História"
+          intro={<Link href="/">Voltar para Histórias</Link>}
+          basePath={`/historias/${story.id}`}
+          params={{}}
+          status={status}
+        />
+      }
+    >
       <TopicBadge topic={story.topic} />
-      <h1>{story.title}</h1>
+      <h2 className="lead-title" style={{ maxWidth: "none" }}>{story.title}</h2>
       <p className="note">
         {story.article_count} notícias em {story.outlet_count} veículos · de{" "}
         {formatDate(story.first_observed_at)} a {formatDate(story.last_observed_at)}
@@ -39,6 +54,9 @@ export default async function StoryPage({ params }: { params: Promise<{ id: stri
         <Link href={`/comparar?ids=${story.id}`}>Comparar com outra história →</Link>
       </p>
 
+      {framing && framing.items.length > 0 && <HeadlineComparison data={framing} />}
+
+      <h2 style={{ fontSize: 16, marginTop: 24 }}>Todas as notícias, por veículo</h2>
       <div className="outlet-columns">
         {[...byOutlet.entries()].map(([outlet, articles]) => (
           <section key={outlet} className="outlet-column">
@@ -63,6 +81,6 @@ export default async function StoryPage({ params }: { params: Promise<{ id: stri
           </section>
         ))}
       </div>
-    </>
+    </PageLayout>
   );
 }

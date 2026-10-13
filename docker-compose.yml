@@ -40,7 +40,7 @@ services:
   # `docker compose up` o executa de novo toda vez, mesmo sem mudança de configuração.
   migrate:
     <<: *backend
-    command: sh -c "alembic upgrade head && python -m app.seed && python -m app.topics_backfill"
+    command: sh -c "alembic upgrade head && python -m app.seed && python -m app.ratings && python -m app.topics_backfill"
     restart: "no"
     depends_on:
       db:

@@ -70,18 +70,27 @@ def topic_matrix(session: Session, start: datetime, end: datetime, outlet_ids: l
 
 
 def coverage_report(
-    session: Session, r: Range, now: datetime, topic: str | None = None, group: str | None = None
+    session: Session,
+    r: Range,
+    now: datetime,
+    topic: str | None = None,
+    group: str | None = None,
+    outlet_filter: list[int] | None = None,
 ) -> dict:
-    """`group`: "nacional" ou "internacional" restringe veículos, notícias e histórias ao grupo."""
+    """`group` ("nacional"/"internacional") e `outlet_filter` (ids, ex.: favoritos)
+    restringem veículos, notícias e histórias."""
     interval = timedelta(minutes=get_settings().collect_interval_minutes)
     max_gap = 2 * interval
 
     outlet_q = select(Outlet).order_by(Outlet.name)
     if group:
         outlet_q = outlet_q.where(Outlet.outlet_group == group)
+    if outlet_filter is not None:
+        outlet_q = outlet_q.where(Outlet.id.in_(outlet_filter))
     outlets = session.scalars(outlet_q).all()
     outlet_ids = [o.id for o in outlets]
-    articles = _eligible_articles(session, r.start, r.end, topic, outlet_ids if group else None)
+    restricted = bool(group) or outlet_filter is not None
+    articles = _eligible_articles(session, r.start, r.end, topic, outlet_ids if restricted else None)
     article_ids = [a.id for a in articles]
     outlet_of = {a.id: a.outlet_id for a in articles}
 
@@ -225,7 +234,7 @@ def coverage_report(
         "top_stories": top_stories,
         "topic": topic,
         "group": group,
-        "topics": topic_matrix(session, r.start, r.end, outlet_ids if group else None),
+        "topics": topic_matrix(session, r.start, r.end, outlet_ids if restricted else None),
         "collection_interval_minutes": int(interval.total_seconds() // 60),
     }
 

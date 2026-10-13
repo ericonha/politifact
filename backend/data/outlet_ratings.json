@@ -1,0 +1,21 @@
+{
+  "_como_usar": [
+    "Avaliações de orientação política de veículos, SEMPRE atribuídas a um avaliador externo identificado.",
+    "O sistema não classifica veículos sozinho. Deixe a lista vazia até escolher um avaliador e uma metodologia.",
+    "Cada entrada: outlet_slug (de backend/app/seed.py), provider, rating, methodology_url, assessed_at (AAAA-MM-DD),",
+    "e opcionalmente reference_url, valid_from, valid_until, confidence (0 a 1), notes.",
+    "rating: left | center-left | center | center-right | right | mixed | unknown.",
+    "Reavaliação = nova entrada com outra assessed_at; a antiga continua no histórico (preencha valid_until nela).",
+    "Depois de editar: docker compose up -d (o serviço migrate carrega o arquivo)."
+  ],
+  "_exemplo_nao_carregado": {
+    "outlet_slug": "exemplo",
+    "provider": "Nome do avaliador",
+    "rating": "center",
+    "methodology_url": "https://avaliador.exemplo/metodologia",
+    "reference_url": "https://avaliador.exemplo/veiculo",
+    "assessed_at": "2026-01-15",
+    "notes": "Por que esta avaliação, divergências com outros avaliadores"
+  },
+  "ratings": []
+}

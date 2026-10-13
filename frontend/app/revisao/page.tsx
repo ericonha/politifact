@@ -1,6 +1,7 @@
+import { PageLayout, Sidebar } from "@/components/Sidebar";
 import Link from "next/link";
 import { revalidatePath } from "next/cache";
-import { formatDate, getReview, resolveReview, triggerProcessing } from "@/lib/api";
+import { formatDate, getCollectionStatus, getReview, resolveReview, triggerProcessing } from "@/lib/api";
 
 async function resolve(formData: FormData) {
   "use server";
@@ -19,11 +20,11 @@ async function processNow() {
 
 export default async function ReviewPage() {
   const items = await getReview();
+  const status = await getCollectionStatus();
 
   return (
-    <>
+    <PageLayout sidebar={<Sidebar title="Revisão" intro="Notícias que o agrupamento automático não soube onde colocar." basePath="/revisao" params={{}} status={status} />}>
       <div className="toolbar">
-        <h1>Revisão do agrupamento</h1>
         <form action={processNow}>
           <button type="submit" className="button secondary">Agrupar notícias novas</button>
         </form>
@@ -68,6 +69,6 @@ export default async function ReviewPage() {
           ))}
         </ul>
       )}
-    </>
+    </PageLayout>
   );
 }

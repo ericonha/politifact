@@ -17,6 +17,7 @@ class OutletOut(BaseModel):
     collection_notes: str | None
     active: bool
     outlet_group: str = "nacional"
+    favorite: bool = False
 
 
 class ArticleOut(BaseModel):
@@ -123,6 +124,20 @@ class ReviewActionIn(BaseModel):
 class ReviewActionOut(BaseModel):
     decision_id: int
     story_id: int
+
+
+class FavoriteIn(BaseModel):
+    favorite: bool
+
+
+class CollectionStatusOut(BaseModel):
+    last_success_at: datetime | None
+    last_run_started_at: datetime | None
+    last_run_status: str | None
+    running: bool
+    interval_minutes: int
+    next_expected_at: datetime | None
+    failing_outlets: list[str]
 
 
 class TopicOut(BaseModel):

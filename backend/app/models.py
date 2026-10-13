@@ -46,6 +46,8 @@ class Outlet(Base):
     collection_notes: Mapped[str | None] = mapped_column(Text)
     active: Mapped[bool] = mapped_column(default=True)
     outlet_group: Mapped[str] = mapped_column(String(16), default="nacional", index=True)  # nacional | internacional
+    # Preferência do usuário (não vem do seed: o seed nunca mexe neste campo).
+    favorite: Mapped[bool] = mapped_column(default=False)
     created_at: Mapped[datetime] = _now_col()
 
     articles: Mapped[list["Article"]] = relationship(back_populates="outlet")
@@ -180,10 +182,18 @@ class FactCheck(Base):
 
 
 class ArticleAnalysis(Base):
+    """Uma análise de uma notícia. analysis_type: "observable" (regras) | "llm".
+
+    Append-only: cada (tipo, versão do prompt, modelo) é uma linha; nada é sobrescrito.
+    """
+
     __tablename__ = "article_analyses"
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     article_id: Mapped[int] = mapped_column(ForeignKey("articles.id"), index=True)
+    analysis_type: Mapped[str] = mapped_column(String(16), default="observable")
+    result: Mapped[dict | None] = mapped_column(JSONB)
+    validation: Mapped[dict | None] = mapped_column(JSONB)
     topics: Mapped[list | None] = mapped_column(JSONB)
     entities: Mapped[list | None] = mapped_column(JSONB)
     framing_summary: Mapped[str | None] = mapped_column(Text)

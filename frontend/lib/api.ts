@@ -13,6 +13,17 @@ export type Outlet = {
   collection_notes: string | null;
   active: boolean;
   outlet_group: "nacional" | "internacional";
+  favorite: boolean;
+};
+
+export type CollectionStatus = {
+  last_success_at: string | null;
+  last_run_started_at: string | null;
+  last_run_status: string | null;
+  running: boolean;
+  interval_minutes: number;
+  next_expected_at: string | null;
+  failing_outlets: string[];
 };
 
 export type Group = "nacional" | "internacional";
@@ -228,12 +239,91 @@ function qs(params: Record<string, string | number | undefined | (string | numbe
 
 export const getOutlets = () => get<Outlet[]>("/api/outlets");
 export const getTopics = (window: Window) => get<Topic[]>(`/api/topics?window=${window}`);
-export const getStories = (window: Window, topic?: string) =>
-  get<Story[]>(`/api/stories?${qs({ window, topic })}`);
-export const getArticles = (window: Window, outletId?: number, topic?: string) =>
-  get<Article[]>(`/api/articles?${qs({ window, limit: 300, outlet_id: outletId, topic })}`);
-export const getCoverage = (p: { window?: string; from?: string; to?: string; topic?: string; group?: string }) =>
+export type OutletChoice = { outletId?: number; favorites?: boolean };
+
+function outletParams(c?: OutletChoice) {
+  return { outlet_id: c?.outletId, favorites: c?.favorites && !c?.outletId ? "true" : undefined };
+}
+
+export const getStories = (window: Window, topic?: string, choice?: OutletChoice) =>
+  get<Story[]>(`/api/stories?${qs({ window, topic, ...outletParams(choice) })}`);
+export const getArticles = (window: Window, outletId?: number, topic?: string, favorites?: boolean) =>
+  get<Article[]>(`/api/articles?${qs({ window, limit: 300, topic, ...outletParams({ outletId, favorites }) })}`);
+export const getCollectionStatus = () => get<CollectionStatus>("/api/collection-status").catch(() => null);
+export const setFavorite = (outletId: number, favorite: boolean) =>
+  post(`/api/outlets/${outletId}/favorite`, { favorite });
+export const getCoverage = (p: {
+  window?: string; from?: string; to?: string; topic?: string; group?: string; outlet_id?: number; favorites?: string;
+}) =>
   getOrError<CoverageReport>(`/api/coverage?${qs(p)}`);
+export type Observable = {
+  headline_words: number;
+  is_question: boolean;
+  has_exclamation: boolean;
+  has_quote: boolean;
+  has_number: boolean;
+  attribution_verbs: string[];
+  lead_actor: string | null;
+  headline_actors: { key: string; name: string }[];
+  actors: { key: string; name: string }[];
+  loaded_terms: string[];
+  loaded_terms_summary: string[];
+};
+
+export type LlmFraming = {
+  angle: string;
+  main_actor: string | null;
+  tone: "positivo" | "neutro" | "negativo" | "incerto";
+  evidence: string[];
+  voices: string[];
+  validation: { status: "ok" | "adjusted" | "rejected"; problems: string[]; model_tone: string };
+  model: string;
+  prompt_version: string;
+  created_at: string;
+};
+
+export type StoryFraming = {
+  story_id: number;
+  items: {
+    article_id: number;
+    outlet_name: string;
+    language: string;
+    headline: string;
+    summary: string | null;
+    original_url: string;
+    published_at: string | null;
+    observable: Observable;
+    llm: LlmFraming | null;
+  }[];
+  comparison: {
+    outlets: string[];
+    actors: { key: string; name: string; outlets: string[]; in_all: boolean }[];
+    partial_actors: { key: string; name: string; outlets: string[]; in_all: boolean }[];
+    lead_actor_by_outlet: Record<string, string[]>;
+    different_leads: boolean;
+    attribution_outlets: string[];
+    question_outlets: string[];
+    loaded_terms_by_outlet: Record<string, string[]>;
+  };
+};
+
+export type Rating = {
+  outlet_id: number;
+  provider: string;
+  rating: string;
+  rating_label: string;
+  methodology_url: string;
+  reference_url: string | null;
+  assessed_at: string;
+  valid_from: string | null;
+  valid_until: string | null;
+  confidence: number | null;
+  notes: string | null;
+};
+
+export const getStoryFraming = (id: number) => get<StoryFraming>(`/api/stories/${id}/framing`);
+export const getRatings = () => get<Rating[]>("/api/ratings");
+
 export const getCompare = (ids: number[]) => getOrError<CompareReport>(`/api/compare?${qs({ ids })}`);
 export const getCollectionRuns = () => get<CollectionRun[]>("/api/collection-runs?limit=60");
 
@@ -267,4 +357,30 @@ const dateFmt = new Intl.DateTimeFormat("pt-BR", {
 
 export function formatDate(value: string | null): string {
   return value ? dateFmt.format(new Date(value)) : "—";
+}
+
+const timeFmt = new Intl.DateTimeFormat("pt-BR", { timeStyle: "short", timeZone: "America/Sao_Paulo" });
+
+export function formatTime(value: string | null): string {
+  return value ? timeFmt.format(new Date(value)) : "—";
+}
+
+/** "agora", "há 12 min", "há 3 h", "há 2 dias" (ou data, se mais antigo). */
+export function timeAgo(value: string | null, now = Date.now()): string {
+  if (!value) return "—";
+  const min = Math.round((now - new Date(value).getTime()) / 60000);
+  if (min < 1) return "agora";
+  if (min < 60) return `há ${min} min`;
+  const h = Math.round(min / 60);
+  if (h < 24) return `há ${h} h`;
+  const d = Math.round(h / 24);
+  if (d <= 7) return `há ${d} ${d === 1 ? "dia" : "dias"}`;
+  return formatDate(value);
+}
+
+/** Parâmetros de filtro de veículo vindos da URL (?veiculo=3 ou ?favoritos=1). */
+export function parseOutletChoice(sp: { veiculo?: string; favoritos?: string }): OutletChoice {
+  const id = sp.veiculo ? Number(sp.veiculo) : NaN;
+  if (Number.isInteger(id) && id > 0) return { outletId: id };
+  return { favorites: sp.favoritos === "1" };
 }

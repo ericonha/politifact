@@ -83,4 +83,18 @@ def process_articles_job() -> dict:
                     if isinstance(v, int):
                         totals[k] = totals.get(k, 0) + v
                 error = stats.embedding_error or error
-        return {"skipped": False, **totals, "embedding_error": error}
+    Queue("default", connection=_redis()).enqueue("app.tasks.framing_job", job_timeout=60 * 60)
+    return {"skipped": False, **totals, "embedding_error": error}
+
+
+def framing_job() -> dict:
+    """Análise de enquadramento: regras para tudo, LLM local para histórias com 2+ veículos."""
+    from app.framing.llm import get_llm
+    from app.framing.pipeline import analyze_framing
+
+    ensure_schema_current()
+    with _single_run(_redis(), "framing") as acquired:
+        if not acquired:
+            return {"skipped": True}
+        with SessionLocal() as session:
+            return vars(analyze_framing(session, get_llm()))
