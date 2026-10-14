@@ -2,7 +2,7 @@
 
 Plataforma pessoal para acompanhar como os veículos brasileiros cobrem as histórias do dia e, nas fases finais, checar afirmações de políticos com evidências rastreáveis.
 
-O plano completo está no documento de arquitetura (fases 1 a 7). Este repositório está na **fase 6: checagem de fatos**.
+O plano completo está no documento de arquitetura (fases 1 a 7). Este repositório está na **fase 6: checagem de fatos**, mais as medidas de diferença de pauta e de texto por veículo.
 
 ## Escopo atual
 
@@ -39,7 +39,9 @@ docker compose up --build
 
 Ao subir, o serviço `migrate` aplica as migrações e cadastra os veículos (ele roda de novo a cada `docker compose up`); só depois a API e o worker começam. Se o banco estiver atrasado em relação ao código, `/api/health` mostra `migration_pending` e os jobs param com uma mensagem explicando o que fazer. O serviço `scheduler` dispara uma coleta logo no início e depois a cada 30 minutos; ao fim de cada coleta, as notícias novas são deduplicadas e agrupadas em histórias.
 
-Quando mudar dependências (`pyproject.toml` ou `package.json`), suba com `--build`.
+Serviços do `docker-compose.yml`: `db`, `redis`, `migrate`, `api`, `worker`, `worker-checks`, `scheduler` e `web`. O `worker` faz os jobs longos em lote (coleta, agrupamento, enquadramento, resumos). O `worker-checks` atende só a fila `checks`, com as checagens pedidas por você, para que um clique não espere atrás de um job de vários minutos na IA local.
+
+Quando mudar dependências (`pyproject.toml` ou `package.json`), suba com `--build`. Depois de mudar código do backend, reconstrua os serviços que o usam: `docker compose up -d --build api worker worker-checks`.
 
 ### Embeddings com Ollama (opcional, recomendado)
 
@@ -70,25 +72,42 @@ Roda sozinha depois de cada agrupamento, só para histórias com 2+ veículos na
 
 Na tela **Checagem**, cole uma afirmação (ou clique em "Checar" numa notícia). O sistema:
 
-1. separa o texto em afirmações (IA local, com o trecho original conferido literalmente; sem IA, frase a frase);
+1. separa o texto em afirmações (IA local, com o trecho original conferido literalmente; sem IA, frase a frase). Dizer que alguém é a favor de, contra, apoia, defende ou votou em algo é um **fato sobre a posição pública** da pessoa, não opinião; "opinião" é só juízo de valor ("é uma vergonha"). Uma trava por regra corrige o modelo quando ele erra isso;
 2. lê cada afirmação por regras: indicador, valor e período;
 3. busca evidências:
-   - **dados oficiais do Banco Central** (API pública do SGS, sem chave) para Selic, inflação (IPCA do mês ou em 12 meses), desemprego, dólar e PIB;
+   - **dados oficiais do Banco Central** (API pública do SGS, sem chave) para Selic, inflação (IPCA do mês ou em 12 meses), desemprego, dólar e PIB. O SGS dá 502/503 de vez em quando: o sistema tenta até 3 vezes (espera de 1 s e 3 s) antes de desistir;
    - **checagens já publicadas** por agências (Google Fact Check Tools), só se houver chave;
-   - **notícias já coletadas**, só como contexto;
-4. decide o veredito (verdadeiro, impreciso, falso, sem evidência suficiente ou não checável) e deixa a checagem aguardando revisão humana.
+   - **notícias já coletadas** nos últimos 90 dias, que só entram se contiverem pelo menos metade das palavras-chave da afirmação;
+4. decide o veredito e deixa a checagem aguardando revisão humana:
 
-Para consultar checagens publicadas, crie uma chave da API "Fact Check Tools" no Google Cloud e ponha no `.env` da raiz:
+| Veredito | Quando |
+|---|---|
+| Verdadeiro / Impreciso / Falso | dado oficial do Banco Central (por regra, sem IA) ou checagem já publicada por agência |
+| **Provavelmente verdadeiro / falso** (marca "só imprensa") | sem as fontes acima, pelo menos 2 veículos diferentes apontam para o mesmo lado e nenhum para o outro |
+| Sem evidência suficiente | nenhuma fonte capaz de decidir, só 1 veículo, ou notícias divergentes |
+| Não checável | opinião, previsão ou pergunta |
 
-```
-FACTCHECK_API_KEY=sua-chave
-```
+**Como a imprensa decide "provavelmente":** a IA só classifica cada notícia (apoia, contradiz ou não se aplica) copiando da notícia o trecho que justifica; sem trecho literal válido, a notícia vira "não se aplica". Alcance diferente (estado contra país, outro turno) não conta. Quem decide o veredito é uma regra, e a explicação é um texto fixo com os veículos e o trecho citado. É um indício, não uma prova: só título e resumo são lidos, e dois veículos podem repetir o mesmo erro ou a mesma agência.
 
 Pela API: `POST /api/claims` com `{"text": "..."}`, `{"article_id": 123}` ou `{"url": "link de notícia já coletada"}`; depois `GET /api/investigations/{id}`.
 
+**Chave do Google (opcional, grátis):**
+
+1. Em https://console.cloud.google.com, crie um projeto.
+2. Ative a **Fact Check Tools API** (https://console.cloud.google.com/apis/library/factchecktools.googleapis.com).
+3. Em "APIs e serviços" → "Credenciais", crie uma **Chave de API** e restrinja-a só a essa API.
+4. Ponha no `.env` da raiz e reinicie: `FACTCHECK_API_KEY=AIza...` e depois `docker compose up -d`.
+
+**Problemas comuns:**
+
+- *Checagem parada em "Na fila…"*: o `worker-checks` não está rodando ou está com código antigo. Confira com `docker compose ps` e `docker compose logs worker-checks --tail 40`; reconstrua com `docker compose up -d --build worker-checks`. Uma checagem criada antes dessa fila existir fica na fila antiga: envie a frase de novo.
+- *"Não foi possível consultar o Banco Central"*: o serviço estava fora do ar nas 3 tentativas. Clique em "Rechecar" mais tarde. Para testar do seu Mac: `curl -s "https://api.bcb.gov.br/dados/serie/bcdata.sgs.432/dados/ultimos/3?formato=json"`.
+- *Lenta com o Ollama ocupado*: a extração e a leitura das notícias usam o mesmo modelo do enquadramento e dos resumos; pode demorar alguns segundos a mais enquanto esses jobs rodam.
+- *Rechecar não muda o tipo da afirmação*: o tipo (fato, opinião...) é gravado na primeira extração. Para reextrair, envie o texto como uma checagem nova.
+
 ### Diferenças de pauta e de texto por veículo
 
-Na página de cada veículo (`/veiculos/<id>`), abaixo do perfil, quatro medidas objetivas, sem IA decidindo o que é viés e sem rótulo de esquerda ou direita. Endpoint: `GET /api/outlets/{id}/bias?window=7d|30d`.
+Onde ver: menu **Veículos**, clique no nome de um veículo (`/veiculos/<id>`) e role até **Diferenças de pauta e de texto**, abaixo do perfil. São quatro medidas objetivas, sem IA decidindo o que é viés e sem rótulo de esquerda ou direita. Endpoint: `GET /api/outlets/{id}/bias?window=7d|30d`. A migração `0010` cria a tabela `article_revisions`; sem ela a seção não aparece.
 
 - **O que deixou de cobrir:** entre histórias cobertas por 4 ou mais veículos do grupo (nacional ou internacional), a parte que o veículo não cobriu, por seção, e as histórias mais cobertas que ele ignorou. Não conta histórias anteriores à matéria mais antiga que temos do veículo.
 - **Quando publica:** atraso em relação ao primeiro veículo do grupo na mesma história (mediana; parte das vezes em que publicou até 10 min depois do primeiro).
@@ -150,6 +169,12 @@ Com o stack rodando:
 docker compose exec api pytest
 ```
 
+Testes que não precisam de banco (só das dependências Python): `test_*_pure.py`, `test_framing_llm.py`, `test_factcheck_parse/extract/bcb/sources/verdict/press_verdict.py` e `test_bias_math.py`. Os que precisam do Postgres do compose, e portanto rodam no Docker: `test_api.py`, `test_collector.py`, `test_pipeline.py`, `test_ratings.py`, `test_briefing_pipeline.py`, `test_factcheck_pipeline.py` e `test_bias_db.py`. Para rodar só as medidas de viés e a coleta de edições:
+
+```bash
+docker compose exec api pytest tests/test_bias_db.py tests/test_collector.py
+```
+
 ## Estrutura
 
 ```
@@ -160,15 +185,15 @@ backend/
     seed.py        veículos monitorados e seus feeds
     ingestion/     normalização, parser RSS/Atom, download e coletor
     clustering/    deduplicação, embeddings, agrupamento, avaliação
-    coverage/      métricas de cobertura (períodos, linha do tempo, lacunas)
+    coverage/      métricas de cobertura (períodos, linha do tempo, lacunas), perfil do veículo e medidas de viés (bias_math.py puro, bias.py com banco)
     topics.py      classificação em seções
     framing/       enquadramento: regras observáveis, comparação, LLM local com validação
     ratings.py     avaliações atribuídas de veículos (lidas de data/outlet_ratings.json)
-    factcheck/     checagem: extração, leitura do número, fontes (BCB, checagens, imprensa), veredito
+    factcheck/     checagem: extração, leitura do número, fontes (BCB, checagens, imprensa), veredito; press_verdict.py (veredito "provável" pela imprensa) e terms.py (palavras-chave e filtro de relevância)
     tasks.py       jobs do worker (coleta e agrupamento, com lock no Redis)
     scheduler.py   agenda a coleta periódica
     worker.py      worker de jobs (RQ); `python -m app.worker checks` atende só a fila das checagens
-  alembic/         migrações
+  alembic/         migrações (0001 a 0010)
   tests/
 frontend/
   app/             páginas (histórias, resumo, checagem, cobertura, comparar, notícias, revisão, coletas, veículos)
@@ -213,12 +238,21 @@ docker-compose.yml
 - Sem dado oficial, a IA só pode decidir a partir de checagens já publicadas, citando-as; explicação com número ou nome que não está nas evidências é descartada. Sem dado oficial nem checagem publicada, a imprensa monitorada pode indicar um lado, mas só como **"provavelmente verdadeiro/falso"** (decisão do dono do projeto, que substituiu a regra anterior de "imprensa nunca decide"): a IA só classifica cada notícia (apoia / contradiz / irrelevante) copiando um trecho literal do título ou resumo; uma regra exige pelo menos 2 veículos diferentes de um lado e nenhum do outro; a explicação é um texto fixo, sem IA. Se há divergência ou só um veículo, o resultado é "sem evidência suficiente". "Verdadeiro" e "falso" continuam exclusivos de dado oficial e checagens publicadas.
 - Fora da checagem automática (aparecem como limitação): afirmações de direção ("o desemprego caiu"), comparação ("o maior desde…"), inflação acumulada no ano, mais de um indicador ou mais de um ano na mesma frase, ano ainda não terminado.
 - Rechecar cria uma nova versão (`fact_checks.supersedes_id`) com as próprias evidências e datas de busca; a revisão humana (aprovar/rejeitar, com nota) vale só para a versão atual.
+- Imprensa e veredito: "verdadeiro" e "falso" só vêm de dado oficial ou de checagem publicada. Com notícias apenas, o máximo é "provavelmente verdadeiro/falso", sempre marcado "só imprensa", exigindo pelo menos 2 veículos de um lado e nenhum do outro. Isso foi uma decisão do dono do projeto depois de ver o sistema recusar um caso claro; a regra anterior era "imprensa nunca decide".
+- Posição pública (a favor, contra, apoia, votou…) é fato checável; opinião é só juízo de valor. A declaração da própria pessoa, segundo a notícia, conta como apoio para uma afirmação sobre a posição dela.
+- Checagens têm fila e worker próprios (`checks` / `worker-checks`); jobs em lote ficam na fila `default`.
+- **Diferenças de pauta e de texto** (`/veiculos/<id>`, `app/coverage/bias*.py`): omissões (histórias cobertas por 4+ veículos do grupo), atraso (mediana em relação ao primeiro), palavras que diferenciam (razão de chances log da presença por matéria, mesma história dos dois lados, mesmo idioma, mínimo de 25 matérias de cada lado) e edições de manchete. Nenhuma é rótulo político, nenhuma usa IA, todas mostram a amostra e a média dos outros veículos do grupo.
+- Edições de manchete: `Article.headline` guarda a primeira versão vista e nunca é sobrescrita; cada mudança detectada na coleta seguinte vira uma linha em `article_revisions`, classificada por regras (só resumo, ajuste, reescrita, número ou negação mudou) e se o texto avisa a correção. Só vê edições enquanto a matéria continua no feed.
+- Omissão só conta a partir da matéria mais antiga que temos do veículo (profundidade do feed), para não acusar omissão do que o feed nem mostraria.
 - Favoritos ficam no banco (`outlets.favorite`), valem em todas as telas e o seed nunca os altera. "Só favoritos" filtra histórias, notícias e o painel de cobertura.
 
 ## Próximos passos
 
 1. Montar o conjunto de teste (cerca de 100 notícias) e ajustar o limiar de junção.
 2. Conferir as seções e a lista de termos de impacto com dados reais.
-3. Checagem: conjunto de teste com afirmações já checadas por agências, para medir acertos e abstenções.
-4. Checagem: mais fontes oficiais (IBGE/SIDRA, Portal da Transparência, Câmara) e afirmações de direção ("caiu", "subiu").
-5. Fase 7: avaliação automática, backups e alertas.
+3. Checagem: conjunto de teste com afirmações já checadas por agências, para medir acertos e abstenções, inclusive do veredito "provável" pela imprensa (o Qwen 7B classificando as notícias ainda não foi medido).
+4. Checagem: nas notícias que apoiam, detectar ressalvas ("votará a favor, mas pretende rever pontos") e anotá-las na explicação, com o mesmo controle de trecho literal.
+5. Checagem: mais fontes oficiais (IBGE/SIDRA, Portal da Transparência, Câmara), afirmações de direção ("caiu", "subiu") e uma fonte própria para pesquisas eleitorais.
+6. Viés: **teste de troca de nomes** (trocar Lula por Flávio e PT por PL nas manchetes e ver se o tom lido pela IA muda) e conjunto de validação humano (cerca de 100 manchetes classificadas por você) antes de dar mais peso ao tom.
+7. Viés: histórico de precisão por veículo (afirmações checadas e aprovadas em revisão, com n), fontes e vozes citadas (ligando pessoas a partidos por dado público) e posição no feed.
+8. Fase 7: avaliação automática, backups e alertas.
