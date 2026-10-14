@@ -1,0 +1,87 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: Backend (lint, migrações, testes, avaliação)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: backend
+    services:
+      db:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: politifact
+          POSTGRES_PASSWORD: politifact
+          POSTGRES_DB: politifact
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U politifact -d politifact"
+          --health-interval 5s --health-timeout 3s --health-retries 20
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s --health-timeout 3s --health-retries 20
+    env:
+      DATABASE_URL: postgresql+psycopg://politifact:politifact@localhost:5432/politifact
+      REDIS_URL: redis://localhost:6379/0
+      # Sem Ollama no CI: embeddings e LLM desligados, os testes usam modelos falsos.
+      EMBEDDINGS_ENABLED: "false"
+      LLM_ENABLED: "false"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/pyproject.toml
+      - name: Instalar
+        run: pip install -e '.[dev]' ruff
+      - name: Lint (ruff)
+        run: ruff check .
+      - name: Migrações e seed (mesmos passos do docker compose)
+        run: |
+          alembic upgrade head
+          python -m app.seed
+          python -m app.ratings
+          python -m app.topics_backfill
+      - name: Testes
+        run: pytest -q
+      - name: Avaliação (linhas de base e dados oficiais, sem modelo)
+        run: python -m app.evals.run --no-write
+
+  frontend:
+    name: Frontend (tipos e build)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Instalar
+        run: npm install --no-audit --no-fund
+      - name: Tipos (tsc)
+        run: npm run typecheck
+      - name: Build
+        run: npm run build
+        env:
+          NEXT_TELEMETRY_DISABLED: "1"

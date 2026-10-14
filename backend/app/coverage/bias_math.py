@@ -250,7 +250,9 @@ def classify_change(old_headline: str, old_summary: str | None, new_headline: st
     wo, wn = _words(old_headline), _words(new_headline)
     sim = (len(wo & wn) / len(wo | wn)) if (wo | wn) else 1.0
     numbers = set(_NUM.findall(old_headline)) != set(_NUM.findall(new_headline))
-    negation = (bool(_raw(old_headline) & _NEGATION) != bool(_raw(new_headline) & _NEGATION)) if headline_changed else False
+    negation = False
+    if headline_changed:
+        negation = bool(_raw(old_headline) & _NEGATION) != bool(_raw(new_headline) & _NEGATION)
     old_all, new_all = _fold(f"{old_headline} {old_summary or ''}"), _fold(f"{new_headline} {new_summary or ''}")
     declared = bool(_DECLARED.search(new_all)) and not _DECLARED.search(old_all)
     if not headline_changed:

@@ -1,5 +1,10 @@
 # PolitiFact BR
 
+[![CI](https://github.com/OWNER/REPO/actions/workflows/ci.yml/badge.svg)](https://github.com/OWNER/REPO/actions/workflows/ci.yml)
+[![Licença: MIT](https://img.shields.io/badge/licen%C3%A7a-MIT-blue.svg)](LICENSE)
+
+**[Demonstração com capturas de tela](docs/demo.html)** (dados fictícios) · [Avaliação e comparação de modelos](backend/evals/README.md)
+
 Plataforma pessoal para acompanhar como os veículos brasileiros cobrem as histórias do dia e, nas fases finais, checar afirmações de políticos com evidências rastreáveis.
 
 O plano completo está no documento de arquitetura (fases 1 a 7). Este repositório está na **fase 6: checagem de fatos**, mais as medidas de diferença de pauta e de texto por veículo.
@@ -175,6 +180,13 @@ Testes que não precisam de banco (só das dependências Python): `test_*_pure.p
 docker compose exec api pytest tests/test_bias_db.py tests/test_collector.py
 ```
 
+## Qualidade
+
+- **CI** (`.github/workflows/ci.yml`): lint (ruff), migrações + seed, testes com Postgres/pgvector e Redis reais, avaliação sem modelo, tipos (tsc) e build do frontend. Troque `OWNER/REPO` no selo acima pelo seu repositório.
+- **Avaliação** (`backend/app/evals/`, gabaritos em `backend/evals/data/`): mede extração de afirmações, posição da imprensa e leitura de dados oficiais, compara modelos do Ollama e destaca o erro grave (afirmar um lado sem base). Os rótulos estão como `proposed` até você revisar. Veja `backend/evals/README.md`.
+- **Demonstração**: `docs/demo.html` e `docs/screenshots/` vêm das páginas reais com dados fictícios (`frontend/demo/`).
+- Lint local: `docker compose run --rm api ruff check .` (instale com `pip install ruff`).
+
 ## Estrutura
 
 ```
@@ -190,15 +202,21 @@ backend/
     framing/       enquadramento: regras observáveis, comparação, LLM local com validação
     ratings.py     avaliações atribuídas de veículos (lidas de data/outlet_ratings.json)
     factcheck/     checagem: extração, leitura do número, fontes (BCB, checagens, imprensa), veredito; press_verdict.py (veredito "provável" pela imprensa) e terms.py (palavras-chave e filtro de relevância)
+    evals/         harness de avaliação (métricas, tarefas, runner de comparação de modelos)
     tasks.py       jobs do worker (coleta e agrupamento, com lock no Redis)
     scheduler.py   agenda a coleta periódica
     worker.py      worker de jobs (RQ); `python -m app.worker checks` atende só a fila das checagens
   alembic/         migrações (0001 a 0010)
+  evals/           gabaritos (data/) e resultados (results/)
   tests/
 frontend/
   app/             páginas (histórias, resumo, checagem, cobertura, comparar, notícias, revisão, coletas, veículos)
   components/      gráficos em SVG (sem biblioteca externa) e abas de seção
   lib/api.ts       cliente da API
+  demo/            gera as capturas de tela da demonstração (dados fictícios)
+docs/              demo.html e screenshots/
+.github/workflows/ci.yml
+LICENSE            MIT
 docker-compose.yml
 ```
 
@@ -250,9 +268,9 @@ docker-compose.yml
 
 1. Montar o conjunto de teste (cerca de 100 notícias) e ajustar o limiar de junção.
 2. Conferir as seções e a lista de termos de impacto com dados reais.
-3. Checagem: conjunto de teste com afirmações já checadas por agências, para medir acertos e abstenções, inclusive do veredito "provável" pela imprensa (o Qwen 7B classificando as notícias ainda não foi medido).
+3. Checagem: rodar `python -m app.evals.run --models ...` com o Ollama, revisar os rótulos `proposed` e ampliar o conjunto com afirmações reais já checadas por agências (hoje: 25 textos, 16 casos de imprensa, 20 de dados oficiais).
 4. Checagem: nas notícias que apoiam, detectar ressalvas ("votará a favor, mas pretende rever pontos") e anotá-las na explicação, com o mesmo controle de trecho literal.
 5. Checagem: mais fontes oficiais (IBGE/SIDRA, Portal da Transparência, Câmara), afirmações de direção ("caiu", "subiu") e uma fonte própria para pesquisas eleitorais.
 6. Viés: **teste de troca de nomes** (trocar Lula por Flávio e PT por PL nas manchetes e ver se o tom lido pela IA muda) e conjunto de validação humano (cerca de 100 manchetes classificadas por você) antes de dar mais peso ao tom.
 7. Viés: histórico de precisão por veículo (afirmações checadas e aprovadas em revisão, com n), fontes e vozes citadas (ligando pessoas a partidos por dado público) e posição no feed.
-8. Fase 7: avaliação automática, backups e alertas.
+8. Fase 7: avaliação automática agendada, backups e alertas.

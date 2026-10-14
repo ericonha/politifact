@@ -27,3 +27,23 @@ include = ["app*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+extend-exclude = ["alembic/versions"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP"]
+ignore = [
+    "B008",  # FastAPI: Depends(...) em argumento padrão é o uso previsto
+    "B905",  # zip sem strict=: os usos aqui têm tamanhos iguais por construção
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Prompts de LLM são prosa longa dentro de strings: reformatar mudaria o texto (e a versão do prompt).
+"app/briefing/core.py" = ["E501"]
+"app/factcheck/extract.py" = ["E501"]
+"app/factcheck/press_verdict.py" = ["E501"]
+"app/factcheck/verdict.py" = ["E501"]
+"app/framing/llm.py" = ["E501"]

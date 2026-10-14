@@ -31,7 +31,8 @@ def scenario():
     article_ids: dict[tuple[str, int], int] = {}
     with SessionLocal() as s:
         for name in "ABCDE":
-            o = Outlet(slug=f"{group}-{name.lower()}", name=f"Veículo {name}", canonical_domain=f"{group}-{name.lower()}.example",
+            o = Outlet(slug=f"{group}-{name.lower()}", name=f"Veículo {name}",
+                       canonical_domain=f"{group}-{name.lower()}.example",
                        country="BR", language="pt-BR", feed_urls=[], outlet_group=group)
             s.add(o)
             s.flush()

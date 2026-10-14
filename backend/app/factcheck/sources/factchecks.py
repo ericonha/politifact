@@ -47,7 +47,8 @@ def parse_response(payload: bytes) -> list[EvidenceItem]:
             url = review.get("url")
             if not url:
                 continue
-            publisher = (review.get("publisher") or {}).get("name") or (review.get("publisher") or {}).get("site") or "?"
+            pub = review.get("publisher") or {}
+            publisher = pub.get("name") or pub.get("site") or "?"
             rating = (review.get("textualRating") or "").strip()
             claim_text = (claim.get("text") or "").strip()
             claimant = (claim.get("claimant") or "").strip()

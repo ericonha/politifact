@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PolitiFact BR — demonstração</title>
+<style>
+:root{--bg:#fafaf9;--fg:#1c1917;--mut:#78716c;--line:#e7e5e4;--acc:#b91c1c}
+@media (prefers-color-scheme:dark){:root{--bg:#141210;--fg:#f5f5f4;--mut:#a8a29e;--line:#2b2724;--acc:#f87171}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.55 system-ui,sans-serif}
+main{max-width:980px;margin:0 auto;padding:32px 16px 64px}
+h1{font-size:34px;margin:0 0 8px}h2{font-size:22px;margin:48px 0 6px;border-top:2px solid var(--fg);padding-top:14px}
+p{margin:6px 0 14px;max-width:70ch}.mut{color:var(--mut)}
+.warn{background:#7c2d12;color:#fff;padding:10px 14px;border-radius:6px;font-size:14px}
+figure{margin:14px 0;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+figure img{display:block;width:100%;height:auto}figcaption{padding:8px 12px;font-size:13px;color:var(--mut);border-top:1px solid var(--line)}
+.phone{max-width:390px}code{background:var(--line);padding:1px 5px;border-radius:4px;font-size:.9em}
+li{margin:4px 0}
+</style></head><body><main>
+<h1>PolitiFact BR</h1>
+<p class="mut">Plataforma pessoal de monitoramento de notícias, análise de cobertura e checagem de fatos, com IA local (Ollama) e validação em cada etapa.</p>
+<p class="warn">Todas as capturas usam dados fictícios (veículos, pessoas e números inventados), geradas pelas páginas reais do app. Os valores do Banco Central nas capturas são ilustrativos.</p>
+
+<h2>1. Histórias</h2>
+<p>As notícias de todos os veículos monitorados são agrupadas em histórias (embeddings bge-m3 + regras). A ordem é por quantos veículos cobriram. As contagens sempre dizem “entre os veículos monitorados”.</p>
+<figure><img src="screenshots/01-historias.png" alt="Lista de histórias do período" loading="lazy"><figcaption>Página inicial: histórias do período, seções e período filtráveis.</figcaption></figure>
+
+<h2>2. Como cada veículo contou a mesma história</h2>
+<p>Manchetes lado a lado com medidas objetivas (quem está em destaque, fala atribuída, termos de impacto) e uma leitura de tom feita por IA local. A leitura de tom só vale com trecho copiado literalmente do texto; sem ele, vira “incerto”. Isto descreve manchetes, não é uma nota de viés.</p>
+<figure><img src="screenshots/02-historia-enquadramento.png" alt="Comparação de manchetes" loading="lazy"><figcaption>Uma história, seis veículos, enquadramentos diferentes.</figcaption></figure>
+
+<h2>3. Diferenças de pauta e de texto por veículo</h2>
+<p>Quatro medidas, sem IA decidindo o que é viés: o que o veículo deixou de cobrir, quando publica em relação ao primeiro, que palavras escolhe nas mesmas histórias e se altera manchetes depois de publicar. Sempre comparado à média dos outros veículos do mesmo grupo, com intervalos e avisos de limite.</p>
+<figure><img src="screenshots/03-veiculo-vies.png" alt="Perfil de um veículo" loading="lazy"><figcaption>Perfil do veículo: pauta, forma das manchetes, omissões, atraso, vocabulário e edições.</figcaption></figure>
+
+<h2>4. Checagem de fatos</h2>
+<p>Cola-se um texto ou escolhe-se uma notícia; o sistema separa as afirmações e checa cada uma, na ordem de confiabilidade:</p>
+<ul>
+<li><b>Dados oficiais</b> (Banco Central): regra fixa compara o número afirmado com a série; sem IA.</li>
+<li><b>Checagens já publicadas</b> por agências (Google Fact Check Tools): a IA só resume, com validação.</li>
+<li><b>Só imprensa</b>: a IA classifica cada notícia (apoia, contradiz, irrelevante) com trecho literal; uma regra exige ao menos 2 veículos de um lado e nenhum do outro. O resultado é sempre “provavelmente”, nunca “verdadeiro/falso”.</li>
+<li>Sem base suficiente: “sem evidência”. Opinião ou previsão: “não checável”.</li>
+</ul>
+<p>Todo veredito fica pendente de revisão humana, e versões anteriores são preservadas.</p>
+<figure><img src="screenshots/04-checagem-detalhe.png" alt="Detalhe de uma checagem" loading="lazy"><figcaption>Quatro afirmações, quatro tipos de resultado, cada um com evidências, limitações e revisão.</figcaption></figure>
+<figure><img src="screenshots/05-checagens-lista.png" alt="Lista de checagens" loading="lazy"><figcaption>Lista de checagens e formulário de nova checagem.</figcaption></figure>
+<figure class="phone"><img src="screenshots/06-checagem-celular.png" alt="Checagem no celular" loading="lazy"><figcaption>Mesma página no celular (390 px).</figcaption></figure>
+
+<h2>Tema escuro</h2>
+<figure><img src="screenshots/07-veiculo-escuro.png" alt="Perfil de veículo no tema escuro" loading="lazy"></figure>
+
+<h2>Como a qualidade é medida</h2>
+<p>Há um conjunto de avaliação com gabaritos e comparação de modelos (<code>python -m app.evals.run</code>), descrito em <code>backend/evals/README.md</code>, e CI com lint, migrações, testes e tipos.</p>
+</main></body></html>

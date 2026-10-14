@@ -13,10 +13,10 @@ from sqlalchemy import or_, select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
+from app.coverage.bias_math import classify_change
 from app.ingestion.fetch import fetch
 from app.ingestion.normalize import canonical_url, content_hash, sanitize_published_at
 from app.ingestion.rss import FeedEntry, parse_feed
-from app.coverage.bias_math import classify_change
 from app.models import Article, ArticleRevision, CollectionRun, Outlet
 from app.topics import classify
 

@@ -39,6 +39,8 @@ _DIRECTION = re.compile(
     r"maior|menor|recorde|pior|melhor|mais alt[oa]|mais baix[oa]|nunca)\b"
 )
 _NEGATIVE_BEFORE = re.compile(r"(queda|recuo|retracao|deflacao|encolheu|contracao)\s+(de\s+)?$")
+# "O PIB caiu 3,5%": é variação negativa (só vale para o PIB; "a inflação caiu para 4%" é nível).
+_FELL_BEFORE = re.compile(r"(caiu|recuou|encolheu|retraiu|despencou)\s+(cerca de\s+|uns\s+)?$")
 _TWELVE_MONTHS = re.compile(r"\b(12|doze) meses\b")
 # "Acumulado no ano" (janeiro até o mês) não tem série configurada: fica fora da checagem.
 _YEAR_TO_DATE = re.compile(r"\bacumulad[oa] (no|neste|deste) ano\b|\bno acumulado do ano\b")
@@ -152,6 +154,8 @@ def parse(claim: str) -> ParsedClaim:
         return p
     value, decimals, pos = v
     if ind.key in ("ipca", "pib") and _NEGATIVE_BEFORE.search(t[:pos]) and value > 0:
+        value = -value
+    if ind.key == "pib" and _FELL_BEFORE.search(t[:pos]) and value > 0:
         value = -value
     if ind.key == "ipca" and "deflacao" in t and value > 0:
         value = -value

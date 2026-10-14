@@ -112,7 +112,8 @@ def outlet_bias(session: Session, outlet: Outlet, r: Range, now: datetime) -> di
 
     # --- 4. edições de manchete -------------------------------------------------------------------
     revs = session.execute(
-        select(ArticleRevision.article_id, ArticleRevision.headline, ArticleRevision.change, ArticleRevision.observed_at)
+        select(ArticleRevision.article_id, ArticleRevision.headline, ArticleRevision.change,
+               ArticleRevision.observed_at)
         .where(ArticleRevision.article_id.in_(ids)).order_by(ArticleRevision.observed_at)
     ).all() if ids else []
     per_article: dict[int, dict] = {}
@@ -132,7 +133,8 @@ def outlet_bias(session: Session, outlet: Outlet, r: Range, now: datetime) -> di
     edits = revision_stats(dict(per_outlet_articles), by_outlet, outlet.id)
     flagged = sorted(
         ((aid, c) for aid, c in per_article.items()
-         if by_id[aid].outlet_id == outlet.id and c["headline_changed"] and c["kind"] in ("possivel_sentido", "reescrita")),
+         if by_id[aid].outlet_id == outlet.id and c["headline_changed"]
+         and c["kind"] in ("possivel_sentido", "reescrita")),
         key=lambda x: (-_KIND_PRIORITY[x[1]["kind"]], x[1]["observed_at"] or now),
     )[:MAX_EDIT_EXAMPLES]
     if flagged:
@@ -153,7 +155,8 @@ def outlet_bias(session: Session, outlet: Outlet, r: Range, now: datetime) -> di
     return {
         "outlet": {"id": outlet.id, "name": outlet.name, "group": outlet.outlet_group, "language": outlet.language},
         "range": {"start": r.start, "end": r.end, "label": r.label, "generated_at": now},
-        "peers": {"group": outlet.outlet_group, "count": len(group) - 1, "min_outlets_for_omission": MIN_OUTLETS_FOR_OMISSION},
+        "peers": {"group": outlet.outlet_group, "count": len(group) - 1,
+                  "min_outlets_for_omission": MIN_OUTLETS_FOR_OMISSION},
         "omissions": om,
         "delay": delay,
         "vocabulary": vocab,

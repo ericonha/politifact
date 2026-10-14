@@ -11,7 +11,9 @@ from app.models import Article, ClusteringDecision, CollectionRun, Outlet, Story
 from app.schemas import (
     ArticleOut,
     CollectionRunOut,
+    CollectionStatusOut,
     EnqueuedOut,
+    FavoriteIn,
     HealthOut,
     OutletCoverage,
     OutletOut,
@@ -22,8 +24,6 @@ from app.schemas import (
     StoryDetailOut,
     StoryOut,
     TopicOut,
-    FavoriteIn,
-    CollectionStatusOut,
 )
 
 app = FastAPI(title="PolitiFact BR", version="0.1.0")

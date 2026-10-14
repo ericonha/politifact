@@ -30,7 +30,7 @@ _LOADED = {
     "heroi", "vilao", "historico", "historica", "recorde", "tragedia", "escancara", "enquadra",
     "rombo", "fiasco", "derrota", "vitoria", "massacre", "terror", "panico", "bilionario", "sigilo",
     "blindagem", "manobra", "tratoraco", "fake", "desmonte", "aparelhamento", "lacra",
-    "scandal", "chaos", "attack", "coup", "radical", "extremist", "lies", "disaster", "shocking",
+    "scandal", "chaos", "attack", "coup", "extremist", "lies", "disaster", "shocking",
 }
 
 _QUOTES = re.compile(r"[\"“”‘’«»]|(^|\s)'|'(\s|$)")

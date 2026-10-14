@@ -16,6 +16,8 @@ from app.factcheck.parse import parse
         ("O PIB cresceu 3% em 2024", "pib", 3.0, 0, "year", 2024, None),
         ("Houve deflação de 0,32% em agosto de 2026", "ipca", -0.32, 2, "month", 2026, 8),
         ("O PIB teve queda de 3,3% em 2020", "pib", -3.3, 1, "year", 2020, None),
+        ("O PIB caiu 3,5% em 2020", "pib", -3.5, 1, "year", 2020, None),  # achado pela avaliação (o18)
+        ("O PIB recuou cerca de 4% em 2020", "pib", -4.0, 0, "year", 2020, None),
         ("A taxa básica de juros é de 14 por cento", "selic", 14.0, 0, "latest", None, None),
     ],
 )

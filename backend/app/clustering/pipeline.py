@@ -6,7 +6,7 @@ mexe em artigos com processing_status = "new".
 
 import logging
 from dataclasses import asdict, dataclass
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session

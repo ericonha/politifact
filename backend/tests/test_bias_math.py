@@ -111,7 +111,8 @@ def test_story_specific_words_do_not_count_when_all_sides_cover_the_story() -> N
 # --- edições ----------------------------------------------------------------------
 
 def test_change_kinds() -> None:
-    c = classify_change("Governo anuncia pacote de R$ 10 bilhões", None, "Governo anuncia pacote de R$ 12 bilhões", None)
+    c = classify_change("Governo anuncia pacote de R$ 10 bilhões", None,
+                        "Governo anuncia pacote de R$ 12 bilhões", None)
     assert c["kind"] == "possivel_sentido" and c["numbers_changed"]
     c = classify_change("Ministro confirma demissão", None, "Ministro não confirma demissão", None)
     assert c["kind"] == "possivel_sentido" and c["negation_changed"]

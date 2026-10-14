@@ -97,7 +97,8 @@ def plan(p: ParsedClaim, today: date) -> Plan | str:
 
     if p.indicator == "desemprego":
         if p.period == "month":
-            return Plan(24369, *_month_bounds(y, m), "point", f"desocupação no trimestre terminado em {p.describe_period()}")
+            return Plan(24369, *_month_bounds(y, m), "point",
+                        f"desocupação no trimestre terminado em {p.describe_period()}")
         if p.period == "year":
             return Plan(24369, date(y, 1, 1), date(y, 12, 31), "range", f"desocupação ao longo de {y}")
         return Plan(24369, *recent, "point", "desocupação mais recente divulgada")

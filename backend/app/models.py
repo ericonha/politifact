@@ -10,6 +10,7 @@ Princípios aplicados aqui:
 
 from datetime import datetime
 
+from pgvector.sqlalchemy import Vector
 from sqlalchemy import (
     BigInteger,
     DateTime,
@@ -22,7 +23,6 @@ from sqlalchemy import (
     UniqueConstraint,
     func,
 )
-from pgvector.sqlalchemy import Vector
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 

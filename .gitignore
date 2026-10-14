@@ -7,3 +7,4 @@ node_modules/
 .next/
 .DS_Store
 _to_delete/
+frontend/demo/dist/
