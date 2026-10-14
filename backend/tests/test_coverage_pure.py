@@ -25,6 +25,7 @@ def test_presets() -> None:
     assert r.end == NOW and r.duration == timedelta(hours=24)
     assert r.bucket == timedelta(hours=1)
     assert resolve_range("7d", None, None, NOW).bucket == timedelta(hours=6)
+    assert resolve_range("30d", None, None, NOW).bucket == timedelta(days=1)
 
 
 def test_custom_range_is_inclusive_in_sao_paulo_time() -> None:

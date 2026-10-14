@@ -42,7 +42,7 @@ export function LineChart({ buckets, bucketSeconds, series, height = 260, ariaLa
     .map((s) => ({ s, y: y(s.values[n - 1] ?? 0) }))
     .sort((a, b) => a.y - b.y);
   const endLabelsFit =
-    !narrow && ends.every((e, i) => i === 0 || e.y - ends[i - 1].y >= LABEL_MIN_GAP);
+    !narrow && series.length > 1 && ends.every((e, i) => i === 0 || e.y - ends[i - 1].y >= LABEL_MIN_GAP);
 
   const indexAt = (clientX: number, rect: DOMRect) => {
     if (n <= 1) return 0;
@@ -66,6 +66,7 @@ export function LineChart({ buckets, bucketSeconds, series, height = 260, ariaLa
 
   return (
     <div className="chart" ref={ref}>
+      {series.length > 1 && (
       <ul className="legend" aria-hidden="true">
         {series.map((s) => (
           <li key={s.key}>
@@ -74,6 +75,7 @@ export function LineChart({ buckets, bucketSeconds, series, height = 260, ariaLa
           </li>
         ))}
       </ul>
+      )}
       <div className="chart-plot">
         <svg
           width={width}

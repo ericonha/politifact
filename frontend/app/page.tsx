@@ -1,9 +1,11 @@
 import Link from "next/link";
+import { BriefingBlock } from "@/components/BriefingBlock";
 import { PageLayout, Sidebar } from "@/components/Sidebar";
 import { OutletNames, StoryCard, StoryMeta } from "@/components/StoryParts";
 import { TopicBadge } from "@/components/TopicTabs";
 import {
   TOPIC_LABELS,
+  getBriefings,
   getCollectionStatus,
   getOutlets,
   getStories,
@@ -20,12 +22,14 @@ export default async function StoriesPage({ searchParams }: { searchParams: Prom
   const win = parseWindow(sp.janela);
   const topic = parseTopic(sp.secao);
   const choice = parseOutletChoice(sp);
-  const [stories, outlets, topics, status] = await Promise.all([
+  const [stories, outlets, topics, status, briefings] = await Promise.all([
     getStories(win, topic, choice),
     getOutlets(),
     getTopics(win),
     getCollectionStatus(),
+    topic ? getBriefings() : Promise.resolve([]),
   ]);
+  const brief = topic ? briefings.find((b) => b.topic === topic) : undefined;
   const names = new Map(outlets.map((o) => [o.id, o.name]));
   const activeOutlets = outlets.filter((o) => o.active).length;
   const outletName = choice.outletId ? names.get(choice.outletId) : undefined;
@@ -63,6 +67,11 @@ export default async function StoriesPage({ searchParams }: { searchParams: Prom
       ) : (
         <>
           {scope && <p className="note" style={{ marginTop: 0 }}>Mostrando: {scope}.</p>}
+          {brief && (
+            <div className="section-brief">
+              <BriefingBlock b={brief} headingLevel={3} />
+            </div>
+          )}
 
           <article className="lead">
             {!topic && <TopicBadge topic={lead.topic} />}

@@ -66,6 +66,7 @@ export default async function StoryPage({ params }: { params: Promise<{ id: stri
                 <li key={a.article_id}>
                   <div className="meta">
                     <span>{formatDate(a.published_at)}</span>
+                    <Link href={`/checagem?artigo=${a.article_id}`} className="check-link">Checar</Link>
                     <span>
                       {METHOD_LABEL[a.assignment_method]}
                       {a.cluster_confidence != null && ` (${a.cluster_confidence.toFixed(2)})`}

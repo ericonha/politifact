@@ -1,7 +1,14 @@
 """Worker de jobs em background (RQ + Redis).
 
-Na fase 1 só existe um job de teste. A coleta de RSS entra na fase 2.
+Filas:
+- "default": coleta, processamento, enquadramento e resumos (jobs longos, em lote).
+- "checks": checagens pedidas pelo usuário. Têm worker próprio para não esperar atrás
+  de um job de 7 minutos na IA local.
+
+Uso: python -m app.worker [fila ...]   (padrão: default)
 """
+
+import sys
 
 from redis import Redis
 from rq import Queue, Worker
@@ -15,7 +22,8 @@ def ping() -> str:
 
 def main() -> None:
     conn = Redis.from_url(get_settings().redis_url)
-    Worker([Queue("default", connection=conn)], connection=conn).work()
+    names = sys.argv[1:] or ["default"]
+    Worker([Queue(n, connection=conn) for n in names], connection=conn).work()
 
 
 if __name__ == "__main__":

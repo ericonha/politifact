@@ -3,6 +3,8 @@ x-backend: &backend
   environment: &backend-env
     DATABASE_URL: postgresql+psycopg://politifact:politifact@db:5432/politifact
     REDIS_URL: redis://redis:6379/0
+    # Opcional: chave da API Google Fact Check Tools, lida do arquivo .env da raiz do projeto.
+    FACTCHECK_API_KEY: ${FACTCHECK_API_KEY:-}
   # Permite falar com o Ollama rodando no Mac (embeddings da fase 3).
   extra_hosts:
     - "host.docker.internal:host-gateway"
@@ -65,6 +67,16 @@ services:
   worker:
     <<: *backend
     command: python -m app.worker
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+
+  # Só checagens de fatos (fila "checks"): não espera os jobs longos do worker principal.
+  worker-checks:
+    <<: *backend
+    command: python -m app.worker checks
     depends_on:
       migrate:
         condition: service_completed_successfully

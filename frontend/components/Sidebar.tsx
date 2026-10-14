@@ -28,6 +28,8 @@ type Props = {
   topics?: Topic[] | true;
   outlets?: Outlet[];
   group?: boolean;
+  /** Opções de período diferentes do padrão (24h/3d/7d). */
+  windows?: { value: string; label: string }[];
 };
 
 function href(basePath: string, params: Params, change: Params): string {
@@ -86,9 +88,10 @@ function CollectionBox({ status }: { status: CollectionStatus | null }) {
   );
 }
 
-export function Sidebar({ title, intro, basePath, params, status, period, customRange, topics, outlets, group }: Props) {
+export function Sidebar({ title, intro, basePath, params, status, period, customRange, topics, outlets, group, windows }: Props) {
   const custom = !!(params.de && params.ate);
-  const win = params.janela ?? "24h";
+  const periodOptions = windows ?? WINDOWS;
+  const win = params.janela ?? periodOptions[0].value;
   const topicCounts = Array.isArray(topics) ? new Map(topics.map((t) => [t.key, t.article_count])) : null;
   const selectedOutlet = params.veiculo ? Number(params.veiculo) : undefined;
   const favs = (outlets ?? []).filter((o) => o.favorite);
@@ -105,7 +108,7 @@ export function Sidebar({ title, intro, basePath, params, status, period, custom
         <section className="side-block">
           <div className="side-label">Período</div>
           <div className="seg">
-            {WINDOWS.map((w) => (
+            {periodOptions.map((w) => (
               <Link
                 key={w.value}
                 href={href(basePath, params, { janela: w.value, de: undefined, ate: undefined })}

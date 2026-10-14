@@ -16,7 +16,8 @@ from sqlalchemy.orm import Session
 from app.ingestion.fetch import fetch
 from app.ingestion.normalize import canonical_url, content_hash, sanitize_published_at
 from app.ingestion.rss import FeedEntry, parse_feed
-from app.models import Article, CollectionRun, Outlet
+from app.coverage.bias_math import classify_change
+from app.models import Article, ArticleRevision, CollectionRun, Outlet
 from app.topics import classify
 
 log = logging.getLogger(__name__)
@@ -32,6 +33,34 @@ def short_error(exc: BaseException, limit: int = 200) -> str:
     first = str(exc).strip().splitlines()[0] if str(exc).strip() else ""
     text = f"{type(exc).__name__}: {first}" if first else type(exc).__name__
     return text[:limit]
+
+
+def _record_revision(session: Session, url: str, entry: FeedEntry) -> bool:
+    """Grava uma versão nova se título+resumo (normalizados) diferem da versão mais recente conhecida."""
+    base = session.execute(
+        select(Article.id, Article.headline, Article.summary, Article.content_hash).where(Article.canonical_url == url)
+    ).first()
+    if base is None:
+        return False
+    new_hash = content_hash(entry.title, entry.summary)
+    if new_hash == base.content_hash:
+        return False
+    last = session.execute(
+        select(ArticleRevision.headline, ArticleRevision.summary, ArticleRevision.content_hash)
+        .where(ArticleRevision.article_id == base.id)
+        .order_by(ArticleRevision.observed_at.desc(), ArticleRevision.id.desc()).limit(1)
+    ).first()
+    prev = last or base
+    if new_hash == prev.content_hash:
+        return False
+    change = classify_change(prev.headline, prev.summary, entry.title, entry.summary)
+    stmt = (
+        insert(ArticleRevision)
+        .values(article_id=base.id, headline=entry.title, summary=entry.summary, content_hash=new_hash, change=change)
+        .on_conflict_do_nothing(index_elements=["article_id", "content_hash"])
+        .returning(ArticleRevision.id)
+    )
+    return session.execute(stmt).scalar_one_or_none() is not None
 
 
 def _store_entry(session: Session, outlet: Outlet, entry: FeedEntry, now: datetime) -> bool:
@@ -68,7 +97,10 @@ def _store_entry(session: Session, outlet: Outlet, entry: FeedEntry, now: dateti
     if session.execute(stmt).scalar_one_or_none() is not None:
         return True
 
-    # Já existia: só registra que o veículo atualizou a matéria.
+    # Já existia: se título/resumo mudaram, guarda a nova versão (a primeira nunca é sobrescrita).
+    _record_revision(session, url, entry)
+
+    # Registra que o veículo atualizou a matéria.
     if entry.updated_at is not None:
         session.execute(
             update(Article)

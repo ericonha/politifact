@@ -78,19 +78,18 @@ def get_outlet(outlet_id: int, session: Session = Depends(get_session)) -> Outle
     return outlet
 
 
-@app.get("/api/stories", response_model=list[StoryOut])
-def list_stories(
-    window: str = Query("24h", pattern="^(24h|3d|7d)$"),
+def stories_in_window(
+    session: Session,
+    since: datetime,
     topic: str | None = None,
-    outlet_id: int | None = None,
-    favorites: bool = False,
-    session: Session = Depends(get_session),
+    wanted: set[int] | None = None,
 ) -> list[StoryOut]:
-    """Histórias com artigos publicados na janela (pela data de publicação, não de descoberta).
+    """Histórias com notícias publicadas desde `since`, com cobertura por veículo e relevância.
 
-    A contagem é sempre "entre os veículos monitorados", nunca cobertura total da mídia.
+    Ordenadas por relevância (ver app/relevance.py). Usado pela API e pelo resumo da IA.
     """
-    since = datetime.now(UTC) - WINDOWS[window]
+    from app.relevance import relevance
+
     rows = session.execute(
         select(
             StoryArticle.story_id,
@@ -105,11 +104,10 @@ def list_stories(
     ).all()
 
     coverage: dict[int, list[OutletCoverage]] = {}
-    for story_id, outlet_id, outlet_name, count in rows:
-        coverage.setdefault(story_id, []).append(
-            OutletCoverage(outlet_id=outlet_id, outlet_name=outlet_name, article_count=count)
+    for row_story_id, row_outlet_id, row_outlet_name, row_count in rows:
+        coverage.setdefault(row_story_id, []).append(
+            OutletCoverage(outlet_id=row_outlet_id, outlet_name=row_outlet_name, article_count=row_count)
         )
-    wanted = _outlet_filter(session, outlet_id, favorites)
     if wanted is not None:
         # Histórias que pelo menos um dos veículos escolhidos cobriu (a cobertura mostrada continua completa).
         coverage = {sid: c for sid, c in coverage.items() if any(x.outlet_id in wanted for x in c)}
@@ -120,18 +118,44 @@ def list_stories(
     if topic:
         story_q = story_q.where(Story.topic == topic)
     stories = session.scalars(story_q).all()
+    active = session.scalar(select(func.count()).select_from(Outlet).where(Outlet.active.is_(True))) or 1
+    now = datetime.now(UTC)
     result = [
         StoryOut.model_validate(s).model_copy(
             update={
                 "coverage": sorted(coverage[s.id], key=lambda c: c.outlet_name),
                 "article_count": sum(c.article_count for c in coverage[s.id]),
                 "outlet_count": len(coverage[s.id]),
+                "relevance": relevance([c.article_count for c in coverage[s.id]], active, s.last_observed_at, now),
             }
         )
         for s in stories
     ]
+    result.sort(key=lambda s: s.relevance, reverse=True)
+    return result
+
+
+@app.get("/api/stories", response_model=list[StoryOut])
+def list_stories(
+    window: str = Query("24h", pattern="^(24h|3d|7d)$"),
+    topic: str | None = None,
+    outlet_id: int | None = None,
+    favorites: bool = False,
+    order: str = Query("relevance", pattern="^(relevance|recent|reach)$"),
+    session: Session = Depends(get_session),
+) -> list[StoryOut]:
+    """Histórias com notícias publicadas na janela (pela data de publicação, não de descoberta).
+
+    Ordem: relevance (padrão), recent (atualizada por último) ou reach (mais veículos).
+    A contagem é sempre "entre os veículos monitorados", nunca cobertura total da mídia.
+    """
+    since = datetime.now(UTC) - WINDOWS[window]
+    result = stories_in_window(session, since, topic, _outlet_filter(session, outlet_id, favorites))
     epoch = datetime.min.replace(tzinfo=UTC)
-    result.sort(key=lambda s: (s.outlet_count, s.last_observed_at or epoch), reverse=True)
+    if order == "recent":
+        result.sort(key=lambda s: s.last_observed_at or epoch, reverse=True)
+    elif order == "reach":
+        result.sort(key=lambda s: (s.outlet_count, s.article_count), reverse=True)
     return result
 
 
@@ -543,3 +567,283 @@ def collection_status(session: Session = Depends(get_session)) -> CollectionStat
         next_expected_at=(last_run.started_at + timedelta(minutes=interval)) if last_run else None,
         failing_outlets=list(failing),
     )
+
+
+@app.get("/api/briefings")
+def briefings(session: Session = Depends(get_session)) -> list[dict]:
+    """Resumo mais recente de cada seção (últimas 24 h), com as histórias citadas em cada ponto."""
+    from app.briefing.pipeline import latest
+    from app.topics import TOPICS
+
+    items = latest(session)
+    ids = {i for b in items for p in (b.result or {}).get("points", []) for i in p["story_ids"]}
+    stories = {s.id: s for s in session.scalars(select(Story).where(Story.id.in_(ids)))} if ids else {}
+    reach = dict(session.execute(
+        select(StoryArticle.story_id, func.count(func.distinct(Article.outlet_id)))
+        .join(Article, Article.id == StoryArticle.article_id)
+        .where(StoryArticle.story_id.in_(ids)).group_by(StoryArticle.story_id)
+    ).all()) if ids else {}
+    order = list(TOPICS)
+    out = []
+    for b in sorted(items, key=lambda b: order.index(b.topic) if b.topic in order else 99):
+        out.append({
+            "topic": b.topic,
+            "label": TOPICS.get(b.topic, b.topic),
+            "generated_at": b.generated_at,
+            "period_start": b.period_start,
+            "period_end": b.period_end,
+            "model": b.model,
+            "prompt_version": b.prompt_version,
+            "story_count": len(b.story_ids),
+            "overview": (b.result or {}).get("overview", ""),
+            "points": [
+                {
+                    "text": p["text"],
+                    "stories": [
+                        {"id": i, "title": stories[i].title if i in stories else f"História {i}",
+                         "outlet_count": reach.get(i, 0)}
+                        for i in p["story_ids"]
+                    ],
+                }
+                for p in (b.result or {}).get("points", [])
+            ],
+            "validation": b.validation,
+        })
+    return out
+
+
+@app.post("/api/briefings", response_model=EnqueuedOut, status_code=202)
+def trigger_briefings(force: bool = False) -> EnqueuedOut:
+    """Gera os resumos agora (force=true regera mesmo sem mudança nas histórias)."""
+    from redis import Redis
+    from rq import Queue
+
+    queue = Queue("default", connection=Redis.from_url(get_settings().redis_url))
+    job = queue.enqueue("app.tasks.briefing_job", force=force, job_timeout=60 * 60)
+    return EnqueuedOut(job_id=job.id)
+
+
+@app.get("/api/outlets/{outlet_id}/profile")
+def outlet_profile_endpoint(
+    outlet_id: int,
+    window: str = Query("7d", pattern="^(7d|30d)$"),
+    session: Session = Depends(get_session),
+) -> dict:
+    """Perfil medido do veículo no período, comparado à média dos veículos do mesmo grupo.
+
+    Não é rótulo de orientação política: mede seções, atores nas manchetes, forma
+    das manchetes, tom lido pela IA (validado) e exclusividade.
+    """
+    from app.coverage.metrics import resolve_range
+    from app.coverage.profile import outlet_profile
+
+    outlet = session.get(Outlet, outlet_id)
+    if outlet is None:
+        raise HTTPException(404, "Veículo não encontrado")
+    now = datetime.now(UTC)
+    return outlet_profile(session, outlet, resolve_range(window, None, None, now), now)
+
+
+@app.get("/api/outlets/{outlet_id}/bias")
+def outlet_bias_endpoint(
+    outlet_id: int,
+    window: str = Query("7d", pattern="^(7d|30d)$"),
+    session: Session = Depends(get_session),
+) -> dict:
+    """Diferenças observáveis do veículo em relação aos pares: omissões, atraso, vocabulário e edições.
+
+    Não é rótulo de orientação política, e só vale para o que os feeds RSS mostram.
+    """
+    from app.coverage.bias import outlet_bias
+    from app.coverage.metrics import resolve_range
+
+    outlet = session.get(Outlet, outlet_id)
+    if outlet is None:
+        raise HTTPException(404, "Veículo não encontrado")
+    now = datetime.now(UTC)
+    return outlet_bias(session, outlet, resolve_range(window, None, None, now), now)
+
+
+# ---------------------------------------------------------------------------
+# Fase 6: checagem de fatos
+# ---------------------------------------------------------------------------
+
+def _enqueue(func: str, *args) -> str:
+    from redis import Redis
+    from rq import Queue
+
+    # Fila própria ("checks"), atendida por worker-checks: um clique do usuário não espera jobs em lote.
+    queue = Queue("checks", connection=Redis.from_url(get_settings().redis_url))
+    return queue.enqueue(func, *args, job_timeout=10 * 60).id
+
+
+def _fact_check_dict(fc, evidence) -> dict:
+    from app.factcheck.verdict import ASSESSMENTS
+
+    return {
+        "id": fc.id, "assessment": fc.assessment, "assessment_label": ASSESSMENTS.get(fc.assessment, fc.assessment),
+        "explanation": fc.explanation, "limitations": [x for x in (fc.limitations or "").split("\n") if x],
+        "method": fc.method, "model": fc.model_name, "prompt_version": fc.prompt_version,
+        "review_status": fc.review_status, "reviewed_at": fc.reviewed_at, "review_note": fc.review_note,
+        "created_at": fc.created_at, "supersedes_id": fc.supersedes_id, "details": fc.details,
+        "evidence": [
+            {"id": e.id, "provider": e.provider, "source_type": e.source_type, "source_url": e.source_url,
+             "source_title": e.source_title, "relevant_passage": e.relevant_passage,
+             "relationship": e.evidence_relationship, "verification_status": e.verification_status,
+             "published_at": e.published_at, "retrieved_at": e.retrieved_at, "data": e.data}
+            for e in evidence
+        ],
+    }
+
+
+def _claim_dict(session: Session, claim) -> dict:
+    """Afirmação + versão atual da checagem + histórico de versões anteriores."""
+    from app.factcheck.pipeline import current_fact_check
+    from app.models import Evidence, FactCheck
+
+    current = current_fact_check(session, claim.id)
+    versions = session.scalars(
+        select(FactCheck).where(FactCheck.claim_id == claim.id).order_by(FactCheck.created_at.desc())
+    ).all()
+    ev_by_fc: dict[int, list] = {}
+    for e in session.scalars(select(Evidence).where(Evidence.claim_id == claim.id).order_by(Evidence.id)):
+        ev_by_fc.setdefault(e.fact_check_id, []).append(e)
+    return {
+        "id": claim.id, "text": claim.claim_text, "quote": claim.quote, "type": claim.claim_type,
+        "parsed": claim.parsed, "article_id": claim.article_id, "investigation_id": claim.investigation_id,
+        "extraction_model": claim.extraction_model, "created_at": claim.created_at,
+        "current": _fact_check_dict(current, ev_by_fc.get(current.id, [])) if current else None,
+        "history": [
+            {"id": v.id, "assessment": v.assessment, "review_status": v.review_status, "created_at": v.created_at,
+             "supersedes_id": v.supersedes_id}
+            for v in versions if current is None or v.id != current.id
+        ],
+    }
+
+
+@app.post("/api/claims", status_code=202)
+def submit_claim(body: dict, session: Session = Depends(get_session)) -> dict:
+    """Pede uma checagem. Corpo: {"text": "..."} ou {"article_id": 123} ou {"url": "link de notícia coletada"}.
+
+    Responde na hora com o id da investigação; o trabalho roda no worker.
+    """
+    from app.factcheck.pipeline import article_text
+    from app.ingestion.normalize import canonical_url
+    from app.models import Investigation
+
+    text_in = (body.get("text") or "").strip() if isinstance(body.get("text"), str) else ""
+    article = None
+    if body.get("article_id") is not None:
+        try:
+            article = session.get(Article, int(body["article_id"]))
+        except (TypeError, ValueError):
+            article = None
+        if article is None:
+            raise HTTPException(404, "Notícia não encontrada")
+    elif isinstance(body.get("url"), str) and body["url"].strip():
+        article = session.scalars(
+            select(Article).where(Article.canonical_url == canonical_url(body["url"]))
+        ).first()
+        if article is None:
+            raise HTTPException(422, "Esse link não está entre as notícias coletadas. Cole o texto da afirmação.")
+    if article is not None:
+        text_in = article_text(article)
+    if len(text_in) < 10:
+        raise HTTPException(422, "Escreva a afirmação (pelo menos 10 caracteres).")
+    if len(text_in) > 4000:
+        raise HTTPException(422, "Texto longo demais: mande até 4.000 caracteres.")
+
+    inv = Investigation(input_type="article" if article else "text", input_text=text_in,
+                        article_id=article.id if article else None, status="queued")
+    session.add(inv)
+    session.commit()
+    job_id = _enqueue("app.tasks.investigate_job", inv.id)
+    return {"investigation_id": inv.id, "job_id": job_id}
+
+
+@app.get("/api/investigations")
+def list_investigations(limit: int = Query(30, ge=1, le=200), session: Session = Depends(get_session)) -> list[dict]:
+    from app.factcheck.pipeline import current_fact_check
+    from app.models import Claim, Investigation
+
+    out = []
+    for inv in session.scalars(select(Investigation).order_by(Investigation.created_at.desc()).limit(limit)):
+        claims = session.scalars(select(Claim).where(Claim.investigation_id == inv.id).order_by(Claim.id)).all()
+        verdicts = []
+        for c in claims:
+            fc = current_fact_check(session, c.id)
+            if fc:
+                verdicts.append({"claim_id": c.id, "text": c.claim_text, "assessment": fc.assessment,
+                                 "review_status": fc.review_status})
+        out.append({"id": inv.id, "input_type": inv.input_type, "input_text": inv.input_text[:300],
+                    "status": inv.status, "error": inv.error, "created_at": inv.created_at, "claims": verdicts})
+    return out
+
+
+@app.get("/api/investigations/{investigation_id}")
+def get_investigation(investigation_id: int, session: Session = Depends(get_session)) -> dict:
+    from app.models import Claim, Investigation
+
+    inv = session.get(Investigation, investigation_id)
+    if inv is None:
+        raise HTTPException(404, "Investigação não encontrada")
+    claims = session.scalars(select(Claim).where(Claim.investigation_id == inv.id).order_by(Claim.id)).all()
+    article = session.get(Article, inv.article_id) if inv.article_id else None
+    return {
+        "id": inv.id, "input_type": inv.input_type, "input_text": inv.input_text, "status": inv.status,
+        "error": inv.error, "extraction": inv.extraction, "created_at": inv.created_at,
+        "started_at": inv.started_at, "finished_at": inv.finished_at,
+        "article": None if article is None else {
+            "id": article.id, "headline": article.headline, "original_url": article.original_url,
+            "outlet": session.get(Outlet, article.outlet_id).name, "published_at": article.published_at},
+        "claims": [_claim_dict(session, c) for c in claims],
+    }
+
+
+@app.get("/api/claims/{claim_id}")
+def get_claim(claim_id: int, session: Session = Depends(get_session)) -> dict:
+    from app.models import Claim
+
+    claim = session.get(Claim, claim_id)
+    if claim is None:
+        raise HTTPException(404, "Afirmação não encontrada")
+    return _claim_dict(session, claim)
+
+
+@app.get("/api/claims/{claim_id}/evidence")
+def get_claim_evidence(claim_id: int, session: Session = Depends(get_session)) -> list[dict]:
+    """Evidências da versão atual da checagem."""
+    current = get_claim(claim_id, session)["current"]
+    return current["evidence"] if current else []
+
+
+@app.post("/api/claims/{claim_id}/recheck", status_code=202)
+def recheck_claim(claim_id: int, session: Session = Depends(get_session)) -> dict:
+    from app.models import Claim
+
+    if session.get(Claim, claim_id) is None:
+        raise HTTPException(404, "Afirmação não encontrada")
+    return {"job_id": _enqueue("app.tasks.recheck_job", claim_id)}
+
+
+@app.post("/api/fact-checks/{fact_check_id}/review")
+def review_fact_check(fact_check_id: int, body: dict, session: Session = Depends(get_session)) -> dict:
+    """Revisão humana: {"decision": "approved" | "rejected", "note": "..."}. Só a versão atual."""
+    from app.factcheck.pipeline import current_fact_check
+    from app.models import FactCheck
+
+    fc = session.get(FactCheck, fact_check_id)
+    if fc is None:
+        raise HTTPException(404, "Checagem não encontrada")
+    decision = body.get("decision")
+    if decision not in ("approved", "rejected"):
+        raise HTTPException(422, "decision deve ser approved ou rejected")
+    current = current_fact_check(session, fc.claim_id)
+    if current is None or current.id != fc.id:
+        raise HTTPException(409, "Essa versão já foi substituída; revise a versão atual")
+    fc.review_status = decision
+    fc.reviewed_at = datetime.now(UTC)
+    note = body.get("note")
+    fc.review_note = note.strip()[:1000] if isinstance(note, str) and note.strip() else None
+    session.commit()
+    return {"id": fc.id, "review_status": fc.review_status}

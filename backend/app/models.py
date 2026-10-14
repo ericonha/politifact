@@ -108,6 +108,25 @@ class Article(Base):
     story_links: Mapped[list["StoryArticle"]] = relationship(back_populates="article")
 
 
+class ArticleRevision(Base):
+    """Versão posterior de título/resumo de um artigo que o veículo alterou depois de publicar.
+
+    O artigo guarda a PRIMEIRA versão vista (Article.headline/summary, nunca sobrescritas); cada mudança
+    detectada na coleta seguinte vira uma linha aqui, com a classificação da diferença para a versão anterior.
+    """
+
+    __tablename__ = "article_revisions"
+    __table_args__ = (UniqueConstraint("article_id", "content_hash", name="uq_article_revisions_hash"),)
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    article_id: Mapped[int] = mapped_column(ForeignKey("articles.id"), index=True)
+    observed_at: Mapped[datetime] = _now_col()
+    headline: Mapped[str] = mapped_column(Text)
+    summary: Mapped[str | None] = mapped_column(Text)
+    content_hash: Mapped[str] = mapped_column(String(64))
+    change: Mapped[dict | None] = mapped_column(JSONB)  # ver coverage.bias_math.classify_change
+
+
 class Story(Base):
     __tablename__ = "stories"
 
@@ -136,6 +155,23 @@ class StoryArticle(Base):
     article: Mapped[Article] = relationship(back_populates="story_links")
 
 
+class Investigation(Base):
+    """Um pedido de checagem: texto colado ou notícia coletada. Vira uma ou mais afirmações."""
+
+    __tablename__ = "investigations"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    input_type: Mapped[str] = mapped_column(String(16))  # text | article
+    input_text: Mapped[str] = mapped_column(Text)
+    article_id: Mapped[int | None] = mapped_column(ForeignKey("articles.id"), index=True)
+    status: Mapped[str] = mapped_column(String(16), default="queued")  # queued | running | done | failed
+    error: Mapped[str | None] = mapped_column(Text)
+    extraction: Mapped[dict | None] = mapped_column(JSONB)
+    created_at: Mapped[datetime] = _now_col(index=True)
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
 class Claim(Base):
     __tablename__ = "claims"
 
@@ -149,6 +185,9 @@ class Claim(Base):
     extraction_model: Mapped[str | None] = mapped_column(String(128))
     extraction_version: Mapped[str | None] = mapped_column(String(64))
     created_at: Mapped[datetime] = _now_col()
+    investigation_id: Mapped[int | None] = mapped_column(ForeignKey("investigations.id"), index=True)
+    quote: Mapped[str | None] = mapped_column(Text)
+    parsed: Mapped[dict | None] = mapped_column(JSONB)
 
 
 class Evidence(Base):
@@ -164,6 +203,9 @@ class Evidence(Base):
     published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     retrieved_at: Mapped[datetime] = _now_col()
     verification_status: Mapped[str] = mapped_column(String(32), default="unverified")
+    fact_check_id: Mapped[int | None] = mapped_column(ForeignKey("fact_checks.id"), index=True)
+    provider: Mapped[str | None] = mapped_column(String(32))
+    data: Mapped[dict | None] = mapped_column(JSONB)
 
 
 class FactCheck(Base):
@@ -178,7 +220,11 @@ class FactCheck(Base):
     model_name: Mapped[str | None] = mapped_column(String(128))
     prompt_version: Mapped[str | None] = mapped_column(String(64))
     created_at: Mapped[datetime] = _now_col()
-    supersedes_id: Mapped[int | None] = mapped_column(ForeignKey("fact_checks.id"))
+    supersedes_id: Mapped[int | None] = mapped_column(ForeignKey("fact_checks.id"), index=True)
+    method: Mapped[str | None] = mapped_column(String(16))  # rules | llm | none
+    details: Mapped[dict | None] = mapped_column(JSONB)
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    review_note: Mapped[str | None] = mapped_column(Text)
 
 
 class ArticleAnalysis(Base):
@@ -239,3 +285,23 @@ class ClusteringDecision(Base):
     decided_at: Mapped[datetime] = _now_col()
     resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     resolved_by_id: Mapped[int | None] = mapped_column(ForeignKey("clustering_decisions.id"))
+
+
+class Briefing(Base):
+    """Resumo de uma seção gerado por IA local (append-only: cada geração é uma linha)."""
+
+    __tablename__ = "briefings"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    topic: Mapped[str] = mapped_column(String(32))
+    window: Mapped[str] = mapped_column(String(8))
+    period_start: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    period_end: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    generated_at: Mapped[datetime] = _now_col()
+    model: Mapped[str] = mapped_column(String(128))
+    prompt_version: Mapped[str] = mapped_column(String(64))
+    input_fingerprint: Mapped[str] = mapped_column(String(64))
+    story_ids: Mapped[list[int]] = mapped_column(JSONB)
+    result: Mapped[dict | None] = mapped_column(JSONB)
+    validation: Mapped[dict | None] = mapped_column(JSONB)
+    error: Mapped[str | None] = mapped_column(Text)

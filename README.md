@@ -2,7 +2,7 @@
 
 Plataforma pessoal para acompanhar como os veículos brasileiros cobrem as histórias do dia e, nas fases finais, checar afirmações de políticos com evidências rastreáveis.
 
-O plano completo está no documento de arquitetura (fases 1 a 7). Este repositório está na **fase 5: análise de veículos e de enquadramento**.
+O plano completo está no documento de arquitetura (fases 1 a 7). Este repositório está na **fase 6: checagem de fatos**.
 
 ## Escopo atual
 
@@ -65,6 +65,37 @@ docker compose exec api python -m app.framing.pipeline --no-llm # só regras
 ```
 
 Roda sozinha depois de cada agrupamento, só para histórias com 2+ veículos nas últimas 72 h, até 30 notícias por vez (`LLM_ARTICLES_PER_RUN`). Para desligar: `LLM_ENABLED=false`.
+
+### Checagem de fatos (fase 6)
+
+Na tela **Checagem**, cole uma afirmação (ou clique em "Checar" numa notícia). O sistema:
+
+1. separa o texto em afirmações (IA local, com o trecho original conferido literalmente; sem IA, frase a frase);
+2. lê cada afirmação por regras: indicador, valor e período;
+3. busca evidências:
+   - **dados oficiais do Banco Central** (API pública do SGS, sem chave) para Selic, inflação (IPCA do mês ou em 12 meses), desemprego, dólar e PIB;
+   - **checagens já publicadas** por agências (Google Fact Check Tools), só se houver chave;
+   - **notícias já coletadas**, só como contexto;
+4. decide o veredito (verdadeiro, impreciso, falso, sem evidência suficiente ou não checável) e deixa a checagem aguardando revisão humana.
+
+Para consultar checagens publicadas, crie uma chave da API "Fact Check Tools" no Google Cloud e ponha no `.env` da raiz:
+
+```
+FACTCHECK_API_KEY=sua-chave
+```
+
+Pela API: `POST /api/claims` com `{"text": "..."}`, `{"article_id": 123}` ou `{"url": "link de notícia já coletada"}`; depois `GET /api/investigations/{id}`.
+
+### Diferenças de pauta e de texto por veículo
+
+Na página de cada veículo (`/veiculos/<id>`), abaixo do perfil, quatro medidas objetivas, sem IA decidindo o que é viés e sem rótulo de esquerda ou direita. Endpoint: `GET /api/outlets/{id}/bias?window=7d|30d`.
+
+- **O que deixou de cobrir:** entre histórias cobertas por 4 ou mais veículos do grupo (nacional ou internacional), a parte que o veículo não cobriu, por seção, e as histórias mais cobertas que ele ignorou. Não conta histórias anteriores à matéria mais antiga que temos do veículo.
+- **Quando publica:** atraso em relação ao primeiro veículo do grupo na mesma história (mediana; parte das vezes em que publicou até 10 min depois do primeiro).
+- **Palavras que escolhe:** razão de chances log da presença de cada palavra por matéria, com prior informativo, comparando o veículo com os outros do mesmo idioma **nas mesmas histórias** (cada história pesa igual dos dois lados). Exige 25 matérias de cada lado e 3 ocorrências.
+- **Edições de manchete:** a coleta agora guarda a versão nova quando uma matéria reaparece no feed com título ou resumo diferente (tabela `article_revisions`; a primeira versão nunca é sobrescrita). Cada mudança é classificada por regras: só resumo, ajuste, reescrita, ou "número ou negação mudou" (sinal para ler as duas versões, não afirma mudança de sentido) e se o texto avisa a correção.
+
+Limites: só vale para o que os feeds RSS mostram, coletado a cada 30 minutos. Edições só são vistas enquanto a matéria continua no feed; um feed que nunca mostra alterações não prova que não houve. Edições só passam a ser registradas depois desta versão; o histórico anterior não existe.
 
 ### Avaliações de orientação política dos veículos
 
@@ -133,13 +164,14 @@ backend/
     topics.py      classificação em seções
     framing/       enquadramento: regras observáveis, comparação, LLM local com validação
     ratings.py     avaliações atribuídas de veículos (lidas de data/outlet_ratings.json)
+    factcheck/     checagem: extração, leitura do número, fontes (BCB, checagens, imprensa), veredito
     tasks.py       jobs do worker (coleta e agrupamento, com lock no Redis)
     scheduler.py   agenda a coleta periódica
-    worker.py      worker de jobs (RQ)
+    worker.py      worker de jobs (RQ); `python -m app.worker checks` atende só a fila das checagens
   alembic/         migrações
   tests/
 frontend/
-  app/             páginas (histórias, cobertura, comparar, notícias, revisão, coletas, veículos)
+  app/             páginas (histórias, resumo, checagem, cobertura, comparar, notícias, revisão, coletas, veículos)
   components/      gráficos em SVG (sem biblioteca externa) e abas de seção
   lib/api.ts       cliente da API
 docker-compose.yml
@@ -173,11 +205,20 @@ docker-compose.yml
 - Análises são append-only: mudar regra, prompt ou modelo cria linhas novas em `article_analyses`, com versão e modelo.
 - Orientação do veículo (avaliação atribuída) e enquadramento da notícia ficam separados: um não é deduzido do outro.
 - Layout de portal: cabeçalho com a marca e o menu; à esquerda, a barra lateral com o título da página, a última coleta, o período, as seções, o grupo e os veículos (com favoritos); à direita, o conteúdo. A página Histórias é uma capa: a história de maior alcance em destaque, duas em seguida e as demais em grade.
+- **Relevância** (`app/relevance.py`, 0 a 100): 60% alcance (veículos que cobriram), 25% volume (no máximo 3 notícias por veículo, escala log) e 15% recência (meia-vida de 8 h). A seção não entra na nota. Histórias são ordenadas por ela (`/api/stories?order=relevance|recent|reach`).
+- **Resumo por seção** (página Resumo): a IA local lê as 8 histórias mais relevantes de cada seção nas últimas 24 h e escreve um panorama e até 5 pontos. Cada ponto cita as histórias de onde saiu; pontos com história inexistente, número ou nome próprio que não aparece no texto das histórias citadas são descartados. Só regera uma seção quando as histórias mudam; cada geração fica guardada (`briefings`). Rodar na mão: `docker compose exec api python -m app.briefing.pipeline --force`.
+- **Perfil de cada veículo** (`/veiculos/<id>`): seções, atores nas manchetes, forma das manchetes, tom lido pela IA (só leituras validadas, com n) e exclusividade, sempre ao lado da média simples dos outros veículos do mesmo grupo. Não é rótulo de orientação política.
+- **Checagem (fase 6)**: com dado oficial, o veredito é por regra, sem IA: o número afirmado bate com a série do Banco Central dentro do arredondamento que ele usa ("4,3%" cobre 4,25 a 4,35; "4%" cobre 3,5 a 4,5) → verdadeiro; perto (até 10% de diferença) → impreciso; longe → falso; sem dado no período → sem evidência suficiente. A explicação é um texto fixo com os números da série, então a IA não tem como inventar um valor.
+- A série da meta Selic (SGS 432) já traz datas futuras, até a próxima reunião do Copom: "valor atual" ignora datas depois de hoje.
+- Sem dado oficial, a IA só pode decidir a partir de checagens já publicadas, citando-as; explicação com número ou nome que não está nas evidências é descartada. Sem dado oficial nem checagem publicada, a imprensa monitorada pode indicar um lado, mas só como **"provavelmente verdadeiro/falso"** (decisão do dono do projeto, que substituiu a regra anterior de "imprensa nunca decide"): a IA só classifica cada notícia (apoia / contradiz / irrelevante) copiando um trecho literal do título ou resumo; uma regra exige pelo menos 2 veículos diferentes de um lado e nenhum do outro; a explicação é um texto fixo, sem IA. Se há divergência ou só um veículo, o resultado é "sem evidência suficiente". "Verdadeiro" e "falso" continuam exclusivos de dado oficial e checagens publicadas.
+- Fora da checagem automática (aparecem como limitação): afirmações de direção ("o desemprego caiu"), comparação ("o maior desde…"), inflação acumulada no ano, mais de um indicador ou mais de um ano na mesma frase, ano ainda não terminado.
+- Rechecar cria uma nova versão (`fact_checks.supersedes_id`) com as próprias evidências e datas de busca; a revisão humana (aprovar/rejeitar, com nota) vale só para a versão atual.
 - Favoritos ficam no banco (`outlets.favorite`), valem em todas as telas e o seed nunca os altera. "Só favoritos" filtra histórias, notícias e o painel de cobertura.
 
 ## Próximos passos
 
 1. Montar o conjunto de teste (cerca de 100 notícias) e ajustar o limiar de junção.
 2. Conferir as seções e a lista de termos de impacto com dados reais.
-3. Ordenar histórias por importância (proposta em aberto).
-4. Fase 6: checagem de fatos.
+3. Checagem: conjunto de teste com afirmações já checadas por agências, para medir acertos e abstenções.
+4. Checagem: mais fontes oficiais (IBGE/SIDRA, Portal da Transparência, Câmara) e afirmações de direção ("caiu", "subiu").
+5. Fase 7: avaliação automática, backups e alertas.

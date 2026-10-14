@@ -76,6 +76,7 @@ class StoryOut(BaseModel):
     article_count: int = 0
     outlet_count: int = 0
     coverage: list[OutletCoverage] = []
+    relevance: float = 0.0
 
 
 class HealthOut(BaseModel):

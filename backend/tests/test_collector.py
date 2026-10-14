@@ -14,7 +14,7 @@ from sqlalchemy import delete, func, select
 
 from app.db import SessionLocal
 from app.ingestion.collector import collect_outlet
-from app.models import Article, ClusteringDecision, CollectionRun, Outlet, StoryArticle
+from app.models import Article, ArticleRevision, ClusteringDecision, CollectionRun, Outlet, StoryArticle
 
 RSS = (Path(__file__).parent / "fixtures" / "rss2.xml").read_bytes()
 NOW = datetime(2026, 10, 12, 20, 0, tzinfo=UTC)
@@ -35,6 +35,7 @@ def outlet() -> Iterator[Outlet]:
         ids = select(Article.id).where(Article.outlet_id == o.id).scalar_subquery()
         s.execute(delete(ClusteringDecision).where(ClusteringDecision.article_id.in_(ids)))
         s.execute(delete(StoryArticle).where(StoryArticle.article_id.in_(ids)))
+        s.execute(delete(ArticleRevision).where(ArticleRevision.article_id.in_(ids)))
         s.execute(delete(Article).where(Article.outlet_id == o.id))
         s.execute(delete(CollectionRun).where(CollectionRun.outlet_id == o.id))
         s.execute(delete(Outlet).where(Outlet.id == o.id))
@@ -87,3 +88,34 @@ def test_failed_feed_is_recorded(outlet: Outlet) -> None:
     assert run.status == "failed"
     assert "timeout simulado" in (run.error_summary or "")
     assert run.finished_at is not None
+
+
+def test_headline_edit_is_recorded_as_revision_and_original_is_kept(outlet: Outlet) -> None:
+    feed = RSS.replace(b"exemplo.com.br", outlet.canonical_domain.encode())
+    edited = feed.replace("Notícia sem data".encode(), "Governo não confirma pacote de R$ 10 bilhões".encode())
+    with SessionLocal() as s:
+        o = s.get(Outlet, outlet.id)
+        collect_outlet(s, o, fetcher=lambda _: feed, now=NOW)
+        collect_outlet(s, o, fetcher=lambda _: edited, now=NOW)
+        collect_outlet(s, o, fetcher=lambda _: edited, now=NOW)  # repetir não duplica a versão
+        revs = s.scalars(
+            select(ArticleRevision).join(Article, Article.id == ArticleRevision.article_id)
+            .where(Article.outlet_id == outlet.id)
+        ).all()
+        originals = {a.headline for a in s.scalars(select(Article).where(Article.outlet_id == outlet.id))}
+
+    assert "Notícia sem data" in originals  # a primeira versão nunca é sobrescrita
+    changed = [r for r in revs if r.headline.startswith("Governo não confirma")]
+    assert len(changed) == 1
+    assert changed[0].change["headline_changed"] and changed[0].change["kind"] in ("reescrita", "possivel_sentido")
+
+
+def test_unchanged_feed_creates_no_revisions(outlet: Outlet) -> None:
+    feed = RSS.replace(b"exemplo.com.br", outlet.canonical_domain.encode())
+    with SessionLocal() as s:
+        o = s.get(Outlet, outlet.id)
+        collect_outlet(s, o, fetcher=lambda _: feed, now=NOW)
+        collect_outlet(s, o, fetcher=lambda _: feed, now=NOW)
+        n = s.scalar(select(func.count()).select_from(ArticleRevision).join(
+            Article, Article.id == ArticleRevision.article_id).where(Article.outlet_id == outlet.id))
+    assert n == 0

@@ -97,4 +97,44 @@ def framing_job() -> dict:
         if not acquired:
             return {"skipped": True}
         with SessionLocal() as session:
-            return vars(analyze_framing(session, get_llm()))
+            result = vars(analyze_framing(session, get_llm()))
+    Queue("default", connection=_redis()).enqueue("app.tasks.briefing_job", job_timeout=60 * 60)
+    return result
+
+
+def briefing_job(force: bool = False) -> dict:
+    """Resumo por seção (IA local). Só regera seções cujas histórias mudaram."""
+    from app.briefing.pipeline import generate
+    from app.framing.llm import get_llm
+
+    ensure_schema_current()
+    model = get_llm()
+    if model is None:
+        return {"skipped": True, "reason": "LLM desligado"}
+    with _single_run(_redis(), "briefing") as acquired:
+        if not acquired:
+            return {"skipped": True}
+        with SessionLocal() as session:
+            return vars(generate(session, model, force=force))
+
+
+def investigate_job(investigation_id: int) -> dict:
+    """Checagem de fatos de um texto ou notícia (fase 6)."""
+    from app.factcheck.pipeline import run_investigation
+    from app.framing.llm import get_llm
+
+    ensure_schema_current()
+    with SessionLocal() as session:
+        inv = run_investigation(session, investigation_id, get_llm())
+        return {"investigation_id": inv.id, "status": inv.status, "error": inv.error}
+
+
+def recheck_job(claim_id: int) -> dict:
+    """Refaz a checagem de uma afirmação, criando uma nova versão (a anterior fica no histórico)."""
+    from app.factcheck.pipeline import recheck
+    from app.framing.llm import get_llm
+
+    ensure_schema_current()
+    with SessionLocal() as session:
+        fc = recheck(session, claim_id, get_llm())
+        return {"claim_id": claim_id, "fact_check_id": fc.id, "assessment": fc.assessment}

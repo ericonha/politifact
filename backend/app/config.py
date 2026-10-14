@@ -17,6 +17,8 @@ class Settings(BaseSettings):
     llm_enabled: bool = True
     llm_model: str = "qwen2.5:7b"
     llm_articles_per_run: int = 30
+    # Checagens publicadas (Google Fact Check Tools). Opcional: sem chave, a fonte é pulada.
+    factcheck_api_key: str | None = None
 
     @property
     def cors_origin_list(self) -> list[str]:

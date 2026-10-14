@@ -12,7 +12,7 @@ from zoneinfo import ZoneInfo
 
 TZ = ZoneInfo("America/Sao_Paulo")
 
-PRESETS = {"24h": timedelta(hours=24), "3d": timedelta(days=3), "7d": timedelta(days=7)}
+PRESETS = {"24h": timedelta(hours=24), "3d": timedelta(days=3), "7d": timedelta(days=7), "30d": timedelta(days=30)}
 MAX_CUSTOM_DAYS = 90
 
 
@@ -66,7 +66,7 @@ def resolve_range(
     if window not in PRESETS:
         raise RangeError(f"janela inválida: {window}")
     span = PRESETS[window]
-    labels = {"24h": "últimas 24 horas", "3d": "últimos 3 dias", "7d": "últimos 7 dias"}
+    labels = {"24h": "últimas 24 horas", "3d": "últimos 3 dias", "7d": "últimos 7 dias", "30d": "últimos 30 dias"}
     return Range(now - span, now, choose_bucket(span), labels[window])
 
 

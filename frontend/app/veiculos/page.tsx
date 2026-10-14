@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { toggleFavorite } from "@/app/actions";
 import { PageLayout, Sidebar } from "@/components/Sidebar";
 import { formatDate, getCollectionStatus, getOutlets, getRatings, type Outlet, type Rating } from "@/lib/api";
@@ -51,7 +52,7 @@ function OutletTable({ outlets, ratings }: { outlets: Outlet[]; ratings: Map<num
                   </button>
                 </form>
                 {o.language.startsWith("en") && <span className="lang-badge">EN</span>}
-                <strong>{o.name}</strong>
+                <Link href={`/veiculos/${o.id}`} className="story-link">{o.name}</Link>
                 <div className="muted">{o.canonical_domain}</div>
               </td>
               <td>
@@ -94,6 +95,7 @@ export default async function OutletsPage() {
         {outlets.filter((o) => o.active).length} de {outlets.length} com coleta ativa. Para mudar feeds ou
         ativar um veículo, edite <code>backend/app/seed.py</code> e rode <code>docker compose up -d</code>.
       </p>
+      <p className="note">Clique no nome de um veículo para ver o perfil dele: seções, quem aparece nas manchetes e como.</p>
       <p className="callout">
         Orientação política só aparece quando vem de um avaliador externo identificado, com metodologia e data
         (arquivo <code>backend/data/outlet_ratings.json</code>). O sistema não classifica veículos sozinho, e a

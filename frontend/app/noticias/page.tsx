@@ -60,6 +60,9 @@ export default async function ArticlesPage({ searchParams }: { searchParams: Pro
               <div className="feed-when">
                 <strong>{names.get(a.outlet_id) ?? "?"}</strong>
                 <span title={formatTime(a.published_at)}>{timeAgo(a.published_at)}</span>
+                <Link href={`/checagem?artigo=${a.id}`} className="check-link" style={{ marginLeft: 0, display: "block" }}>
+                  Checar
+                </Link>
               </div>
               <div>
                 {!topic && <TopicBadge topic={a.topic} />}
