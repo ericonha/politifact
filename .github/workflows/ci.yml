@@ -81,7 +81,7 @@ jobs:
         run: npm install --no-audit --no-fund
       - name: Tipos (tsc)
         run: npm run typecheck
-      - name: Build (tenta 3 vezes: next/font baixa a fonte do Google na hora do build)
+      - name: "Build (3 tentativas, pois o next/font baixa a fonte do Google no build)"
         run: |
           for i in 1 2 3; do npm run build && exit 0; echo "tentativa $i falhou"; sleep 10; done
           exit 1
