@@ -67,7 +67,7 @@ def test_recheck_creates_new_version_and_keeps_old(created) -> None:
         first = current_fact_check(s, claim.id)
 
         def selic_changed(plan):
-            return [Point(date(2026, 10, 12), 12.75)]
+            return [Point(date(2026, 10, 12), 10.75)]  # fora da tolerância de 10% (senão: "impreciso")
 
         second = recheck(s, claim.id, None, today=TODAY, bcb_fetch=selic_changed, factcheck_search=no_factchecks)
         versions = s.scalars(select(FactCheck).where(FactCheck.claim_id == claim.id)).all()

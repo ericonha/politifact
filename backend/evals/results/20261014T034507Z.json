@@ -1,0 +1,2836 @@
+{
+ "meta": {
+  "when": "2026-10-14T03:39:00+00:00",
+  "python": "3.12.15",
+  "prompts": {
+   "extract": "extract-v2",
+   "stance": "press-stance-v2"
+  },
+  "datasets": {
+   "extract": {
+    "cases": 25,
+    "label_status": [
+     "proposed"
+    ],
+    "sha256": "6b47a336b10e"
+   },
+   "stance": {
+    "cases": 16,
+    "label_status": [
+     "proposed"
+    ],
+    "sha256": "9ef745460258"
+   },
+   "official": {
+    "cases": 20,
+    "label_status": [
+     "proposed"
+    ],
+    "sha256": "019ad3a88ebd"
+   }
+  },
+  "models": [
+   "baseline",
+   "qwen2.5:7b",
+   "llama3.1:8b"
+  ]
+ },
+ "official": {
+  "task": "official",
+  "cases": 20,
+  "accuracy": {
+   "k": 20,
+   "n": 20,
+   "value": 1.0,
+   "low": 0.8388698745050667,
+   "high": 1.0
+  },
+  "confusion": {
+   "match": {
+    "match": 8,
+    "close": 0,
+    "mismatch": 0,
+    "no_data": 0,
+    "unchecked": 0
+   },
+   "close": {
+    "match": 0,
+    "close": 2,
+    "mismatch": 0,
+    "no_data": 0,
+    "unchecked": 0
+   },
+   "mismatch": {
+    "match": 0,
+    "close": 0,
+    "mismatch": 5,
+    "no_data": 0,
+    "unchecked": 0
+   },
+   "no_data": {
+    "match": 0,
+    "close": 0,
+    "mismatch": 0,
+    "no_data": 1,
+    "unchecked": 0
+   },
+   "unchecked": {
+    "match": 0,
+    "close": 0,
+    "mismatch": 0,
+    "no_data": 0,
+    "unchecked": 4
+   }
+  },
+  "failures": [],
+  "results": [
+   {
+    "id": "o01",
+    "claim": "A Selic está em 10,50% ao ano.",
+    "expected": "match",
+    "got": "match",
+    "note": ""
+   },
+   {
+    "id": "o02",
+    "claim": "A Selic está em 12% ao ano.",
+    "expected": "mismatch",
+    "got": "mismatch",
+    "note": ""
+   },
+   {
+    "id": "o03",
+    "claim": "A Selic está em 10,75%.",
+    "expected": "close",
+    "got": "close",
+    "note": "dentro de 10% do valor, fora do arredondamento"
+   },
+   {
+    "id": "o04",
+    "claim": "A Selic estava em 10,5% em fevereiro de 2026.",
+    "expected": "match",
+    "got": "match",
+    "note": "intervalo do mês"
+   },
+   {
+    "id": "o05",
+    "claim": "A inflação acumulada em 12 meses foi de 4,8% em fevereiro de 2026.",
+    "expected": "match",
+    "got": "match",
+    "note": ""
+   },
+   {
+    "id": "o06",
+    "claim": "A inflação acumulada em 12 meses foi de 7% em fevereiro de 2026.",
+    "expected": "mismatch",
+    "got": "mismatch",
+    "note": ""
+   },
+   {
+    "id": "o07",
+    "claim": "A inflação de janeiro de 2026 foi de 0,16%.",
+    "expected": "match",
+    "got": "match",
+    "note": ""
+   },
+   {
+    "id": "o08",
+    "claim": "A inflação subiu em fevereiro de 2026.",
+    "expected": "unchecked",
+    "got": "unchecked",
+    "note": "direção, não valor"
+   },
+   {
+    "id": "o09",
+    "claim": "O desemprego está em 6,9%.",
+    "expected": "match",
+    "got": "match",
+    "note": ""
+   },
+   {
+    "id": "o10",
+    "claim": "O desemprego em janeiro de 2026 foi de 8%.",
+    "expected": "mismatch",
+    "got": "mismatch",
+    "note": ""
+   },
+   {
+    "id": "o11",
+    "claim": "O dólar fechou a R$ 5,40 em março de 2026.",
+    "expected": "match",
+    "got": "match",
+    "note": "faixa do mês"
+   },
+   {
+    "id": "o12",
+    "claim": "O dólar passou de R$ 6,50 em março de 2026.",
+    "expected": "mismatch",
+    "got": "mismatch",
+    "note": ""
+   },
+   {
+    "id": "o13",
+    "claim": "O PIB de 2023 cresceu 2,9%.",
+    "expected": "match",
+    "got": "match",
+    "note": ""
+   },
+   {
+    "id": "o14",
+    "claim": "O PIB de 2024 cresceu 5%.",
+    "expected": "mismatch",
+    "got": "mismatch",
+    "note": ""
+   },
+   {
+    "id": "o15",
+    "claim": "A Selic estará em 8% em 2027.",
+    "expected": "unchecked",
+    "got": "unchecked",
+    "note": "período futuro"
+   },
+   {
+    "id": "o16",
+    "claim": "A Selic e a inflação estão em 10,5%.",
+    "expected": "unchecked",
+    "got": "unchecked",
+    "note": "dois indicadores"
+   },
+   {
+    "id": "o17",
+    "claim": "O desemprego em março de 2019 foi de 12%.",
+    "expected": "no_data",
+    "got": "no_data",
+    "note": "série sem dados no período"
+   },
+   {
+    "id": "o18",
+    "claim": "O PIB caiu 3,5% em 2020.",
+    "expected": "close",
+    "got": "close",
+    "note": "valor aproximado dentro de 10%"
+   },
+   {
+    "id": "o19",
+    "claim": "A inflação de 2025 foi de 4,4%.",
+    "expected": "match",
+    "got": "match",
+    "note": "ano fechado = dezembro"
+   },
+   {
+    "id": "o20",
+    "claim": "O governo é bom na economia.",
+    "expected": "unchecked",
+    "got": "unchecked",
+    "note": "sem indicador"
+   }
+  ]
+ },
+ "extract": {
+  "baseline": {
+   "task": "extract",
+   "cases": 25,
+   "expected_claims": 29,
+   "recall": {
+    "k": 26,
+    "n": 29,
+    "value": 0.896551724137931,
+    "low": 0.7361455275293085,
+    "high": 0.9641857596186989
+   },
+   "type_accuracy": {
+    "k": 21,
+    "n": 26,
+    "value": 0.8076923076923077,
+    "low": 0.6212336384535001,
+    "high": 0.9149306422821174
+   },
+   "checkable_agreement": {
+    "k": 24,
+    "n": 26,
+    "value": 0.9230769230769231,
+    "low": 0.7585805251948495,
+    "high": 0.9786453608166245
+   },
+   "extras_per_text": 0.0,
+   "prompt_leaks": 0,
+   "fallbacks_to_rules": null,
+   "llm": null,
+   "results": [
+    {
+     "id": "e01",
+     "expected_n": 1,
+     "found": 1,
+     "type_ok": 1,
+     "checkable_ok": 1,
+     "extras": 0,
+     "leaks": 0,
+     "detail": [
+      {
+       "key": "selic",
+       "expected": "numero",
+       "got": "numero"
+      }
+     ]
+    },
+    {
+     "id": "e02",
+     "expected_n": 1,
+     "found": 1,
+     "type_ok": 1,
+     "checkable_ok": 1,
+     "extras": 0,
+     "leaks": 0,
+     "detail": [
+      {
+       "key": "desemprego",
+       "expected": "numero",
+       "got": "numero"
+      }
+     ]
+    },
+    {
+     "id": "e03",
+     "expected_n": 1,
+     "found": 1,
+     "type_ok": 0,
+     "checkable_ok": 1,
+     "extras": 0,
+     "leaks": 0,
+     "detail": [
+      {
+       "key": "pec 6x1",
+       "expected": "fato",
+       "got": "numero"
+      }
+     ]
+    },
+    {
+     "id": "e04",
+     "expected_n": 1,
+     "found": 1,
+     "type_ok": 1,
+     "checkable_ok": 1,
+     "extras": 0,
+     "leaks": 0,
+     "detail": [
+      {
+       "key": "reforma tributaria",
+       "expected": "fato",
+       "got": "fato"
+      }
+     ]
+    },
+    {
+     "id": "e05",
+     "expected_n": 1,
+     "found": 1,
+     "type_ok": 0,
+     "checkable_ok": 0,
+     "extras": 0,
+     "leaks": 0,
+     "detail": [
+      {
+       "key": "vergonha",
+       "expected": "opiniao",
+       "got": "numero"
+      }
+     ]
+    },
+    {
+     "id": "e06",
+     "expected_n": 1,
+     "found": 1,
+     "type_ok": 1,
+     "checkable_ok": 1,
+     "extras": 0,
+     "leaks": 0,
+     "detail": [
+      {
+       "key": "crescer",
+       "expected": "previsao",
+       "got": "previsao"
+      }
+     ]
+    },
+    {
+     "id": "e07",
+     "expected_n": 1,
+     "found": 1,
+     "type_ok": 1,
+     "checkable_ok": 1,
+     "extras": 0,
+     "leaks": 0,
+     "detail": [
+      {
+       "key": "inflacao",
+       "expected": "pergunta",
+       "got": "pergunta"
+      }
+     ]
+    },
+    {
+     "id": "e08",
+     "expected_n": 1,
+     "found": 1,
+     "type_ok": 0,
+     "checkable_ok": 0,
+     "extras": 0,
+     "leaks": 0,
+     "detail": [
+      {
+       "key": "debate",
+       "expected": "citacao",
+       "got": "previsao"
+      }
+     ]
+    },
+    {
+     "id": "e09",
+     "expected_n": 2,
+     "found": 1,
+     "type_ok": 1,
+     "checkable_ok": 1,
+     "extras": 0,
+     "leaks": 0,
+     "detail": [
+      {
+       "key": "selic",
+       "expected": "numero",
+       "got": "numero"
+      },
+      {
+       "key": "inflacao",
+       "expected": "numero",
+       "got": null
+      }
+     ]
+    },
+    {
+     "id": "e10",
+     "expected_n": 3,
+     "found": 2,
+     "type_ok": 2,
+     "checkable_ok": 2,
+     "extras": 0,
+     "leaks": 0,
+     "detail": [
+      {
+       "key": "pib",
+       "expected": "numero",
+       "got": "numero"
+      },
+      {
+       "key": "melhor",
+       "expected": "opiniao",
+       "got": null
+      },
+      {
+       "key": "desemprego",
+       "expected": "numero",
+       "got": "numero"
+      }
+     ]
+    },
+    {
+     "id": "e11",
+     "expected_n": 1,
+     "found": 1,
+     "type_ok": 0,
+     "checkable_ok": 1,
+     "extras": 0,
+     "leaks": 0,
+     "detail": [
+      {
+       "key": "plano diretor",
+       "expected": "fato",
+       "got": "numero"
+      }
+     ]
+    },
+    {
+     "id": "e12",
+     "expected_n": 1,
+     "found": 1,
+     "type_ok": 1,
+     "checkable_ok": 1,
+     "extras": 0,
+     "leaks": 0,
+     "detail": [
+      {
+       "key": "maioridade",
+       "expected": "fato",
+       "got": "fato"
+      }
+     ]
+    },
+    {
+     "id": "e13",
+     "expected_n": 1,
+     "found": 1,
+     "type_ok": 1,
+     "checkable_ok": 1,
+     "extras": 0,
+     "leaks": 0,
+     "detail": [
+      {
+       "key": "dolar",
+       "expected": "numero",
+       "got": "numero"
+      }
+     ]
+    },
+    {
+     "id": "e14",
+     "expected_n": 1,
+     "found": 1,
+     "type_ok": 1,
+     "checkable_ok": 1,
+     "extras": 0,
+     "leaks": 0,
+     "detail": [
+      {
+       "key": "absurdo",
+       "expected": "opiniao",
+       "got": "opiniao"
+      }
+     ]
+    },
+    {
+     "id": "e15",
+     "expected_n": 1,
+     "found": 1,
+     "type_ok": 0,
+     "checkable_ok": 1,
+     "extras": 0,
+     "leaks": 0,
+     "detail": [
+      {
+       "key": "anvisa",
+       "expected": "fato",
+       "got": "numero"
+      }
+     ]
+    },
+    {
+     "id": "e16",
+     "expected_n": 1,
+     "found": 1,
+     "type_ok": 1,
+     "checkable_ok": 1,
+     "extras": 0,
+     "leaks": 0,
+     "detail": [
+      {
+       "key": "obras",
+       "expected": "previsao",
+       "got": "previsao"
+      }
+     ]
+    },
+    {
+     "id": "e17",
+     "expected_n": 1,
+     "found": 1,
+     "type_ok": 1,
+     "checkable_ok": 1,
+     "extras": 0,
+     "leaks": 0,
+     "detail": [
+      {
+       "key": "estadio",
+       "expected": "pergunta",
+       "got": "pergunta"
+      }
+     ]
+    },
+    {
+     "id": "e18",
+     "expected_n": 1,
+     "found": 1,
+     "type_ok": 1,
+     "checkable_ok": 1,
+     "extras": 0,
+     "leaks": 0,
+     "detail": [
+      {
+       "key": "selic",
+       "expected": "numero",
+       "got": "numero"
+      }
+     ]
+    },
+    {
+     "id": "e19",
+     "expected_n": 1,
+     "found": 1,
+     "type_ok": 1,
+     "checkable_ok": 1,
+     "extras": 0,
+     "leaks": 0,
+     "detail": [
+      {
+       "key": "icms",
+       "expected": "fato",
+       "got": "fato"
+      }
+     ]
+    },
+    {
+     "id": "e20",
+     "expected_n": 1,
+     "found": 1,
+     "type_ok": 1,
+     "checkable_ok": 1,
+     "extras": 0,
+     "leaks": 0,
+     "detail": [
+      {
+       "key": "habitantes",
+       "expected": "numero",
+       "got": "numero"
+      }
+     ]
+    },
+    {
+     "id": "e21",
+     "expected_n": 1,
+     "found": 1,
+     "type_ok": 1,
+     "checkable_ok": 1,
+     "extras": 0,
+     "leaks": 0,
+     "detail": [
+      {
+       "key": "arcabouco",
+       "expected": "fato",
+       "got": "fato"
+      }
+     ]
+    },
+    {
+     "id": "e22",
+     "expected_n": 1,
+     "found": 1,
+     "type_ok": 1,
+     "checkable_ok": 1,
+     "extras": 0,
+     "leaks": 0,
+     "detail": [
+      {
+       "key": "orcamento",
+       "expected": "numero",
+       "got": "numero"
+      }
+     ]
+    },
+    {
+     "id": "e23",
+     "expected_n": 2,
+     "found": 1,
+     "type_ok": 1,
+     "checkable_ok": 1,
+     "extras": 0,
+     "leaks": 0,
+     "detail": [
+      {
+       "key": "selic",
+       "expected": "numero",
+       "got": "numero"
+      },
+      {
+       "key": "unanime",
+       "expected": "citacao",
+       "got": null
+      }
+     ]
+    },
+    {
+     "id": "e24",
+     "expected_n": 1,
+     "found": 1,
+     "type_ok": 1,
+     "checkable_ok": 1,
+     "extras": 0,
+     "leaks": 0,
+     "detail": [
+      {
+       "key": "pec da seguranca",
+       "expected": "fato",
+       "got": "fato"
+      }
+     ]
+    },
+    {
+     "id": "e25",
+     "expected_n": 1,
+     "found": 1,
+     "type_ok": 1,
+     "checkable_ok": 1,
+     "extras": 0,
+     "leaks": 0,
+     "detail": [
+      {
+       "key": "pior",
+       "expected": "opiniao",
+       "got": "opiniao"
+      }
+     ]
+    }
+   ]
+  },
+  "qwen2.5:7b": {
+   "task": "extract",
+   "cases": 25,
+   "expected_claims": 29,
+   "recall": {
+    "k": 29,
+    "n": 29,
+    "value": 1.0,
+    "low": 0.8830264055344442,
+    "high": 1.0
+   },
+   "type_accuracy": {
+    "k": 24,
+    "n": 29,
+    "value": 0.8275862068965517,
+    "low": 0.6545119942718488,
+    "high": 0.9240225472852007
+   },
+   "checkable_agreement": {
+    "k": 29,
+    "n": 29,
+    "value": 1.0,
+    "low": 0.8830264055344442,
+    "high": 1.0
+   },
+   "extras_per_text": 0.0,
+   "prompt_leaks": 0,
+   "fallbacks_to_rules": 0,
+   "llm": {
+    "calls": 25,
+    "errors": 0,
+    "p50_s": 6.100029918998189,
+    "p95_s": 10.619719337999413
+   },
+   "results": [
+    {
+     "id": "e01",
+     "expected_n": 1,
+     "found": 1,
+     "type_ok": 1,
+     "checkable_ok": 1,
+     "extras": 0,
+     "leaks": 0,
+     "detail": [
+      {
+       "key": "selic",
+       "expected": "numero",
+       "got": "numero"
+      }
+     ]
+    },
+    {
+     "id": "e02",
+     "expected_n": 1,
+     "found": 1,
+     "type_ok": 1,
+     "checkable_ok": 1,
+     "extras": 0,
+     "leaks": 0,
+     "detail": [
+      {
+       "key": "desemprego",
+       "expected": "numero",
+       "got": "numero"
+      }
+     ]
+    },
+    {
+     "id": "e03",
+     "expected_n": 1,
+     "found": 1,
+     "type_ok": 1,
+     "checkable_ok": 1,
+     "extras": 0,
+     "leaks": 0,
+     "detail": [
+      {
+       "key": "pec 6x1",
+       "expected": "fato",
+       "got": "fato"
+      }
+     ]
+    },
+    {
+     "id": "e04",
+     "expected_n": 1,
+     "found": 1,
+     "type_ok": 1,
+     "checkable_ok": 1,
+     "extras": 0,
+     "leaks": 0,
+     "detail": [
+      {
+       "key": "reforma tributaria",
+       "expected": "fato",
+       "got": "fato"
+      }
+     ]
+    },
+    {
+     "id": "e05",
+     "expected_n": 1,
+     "found": 1,
+     "type_ok": 1,
+     "checkable_ok": 1,
+     "extras": 0,
+     "leaks": 0,
+     "detail": [
+      {
+       "key": "vergonha",
+       "expected": "opiniao",
+       "got": "opiniao"
+      }
+     ]
+    },
+    {
+     "id": "e06",
+     "expected_n": 1,
+     "found": 1,
+     "type_ok": 1,
+     "checkable_ok": 1,
+     "extras": 0,
+     "leaks": 0,
+     "detail": [
+      {
+       "key": "crescer",
+       "expected": "previsao",
+       "got": "previsao"
+      }
+     ]
+    },
+    {
+     "id": "e07",
+     "expected_n": 1,
+     "found": 1,
+     "type_ok": 0,
+     "checkable_ok": 1,
+     "extras": 0,
+     "leaks": 0,
+     "detail": [
+      {
+       "key": "inflacao",
+       "expected": "pergunta",
+       "got": "opiniao"
+      }
+     ]
+    },
+    {
+     "id": "e08",
+     "expected_n": 1,
+     "found": 1,
+     "type_ok": 0,
+     "checkable_ok": 1,
+     "extras": 0,
+     "leaks": 0,
+     "detail": [
+      {
+       "key": "debate",
+       "expected": "citacao",
+       "got": "fato"
+      }
+     ]
+    },
+    {
+     "id": "e09",
+     "expected_n": 2,
+     "found": 2,
+     "type_ok": 2,
+     "checkable_ok": 2,
+     "extras": 0,
+     "leaks": 0,
+     "detail": [
+      {
+       "key": "selic",
+       "expected": "numero",
+       "got": "numero"
+      },
+      {
+       "key": "inflacao",
+       "expected": "numero",
+       "got": "numero"
+      }
+     ]
+    },
+    {
+     "id": "e10",
+     "expected_n": 3,
+     "found": 3,
+     "type_ok": 3,
+     "checkable_ok": 3,
+     "extras": 0,
+     "leaks": 0,
+     "detail": [
+      {
+       "key": "pib",
+       "expected": "numero",
+       "got": "numero"
+      },
+      {
+       "key": "melhor",
+       "expected": "opiniao",
+       "got": "opiniao"
+      },
+      {
+       "key": "desemprego",
+       "expected": "numero",
+       "got": "numero"
+      }
+     ]
+    },
+    {
+     "id": "e11",
+     "expected_n": 1,
+     "found": 1,
+     "type_ok": 1,
+     "checkable_ok": 1,
+     "extras": 0,
+     "leaks": 0,
+     "detail": [
+      {
+       "key": "plano diretor",
+       "expected": "fato",
+       "got": "fato"
+      }
+     ]
+    },
+    {
+     "id": "e12",
+     "expected_n": 1,
+     "found": 1,
+     "type_ok": 1,
+     "checkable_ok": 1,
+     "extras": 0,
+     "leaks": 0,
+     "detail": [
+      {
+       "key": "maioridade",
+       "expected": "fato",
+       "got": "fato"
+      }
+     ]
+    },
+    {
+     "id": "e13",
+     "expected_n": 1,
+     "found": 1,
+     "type_ok": 0,
+     "checkable_ok": 1,
+     "extras": 0,
+     "leaks": 0,
+     "detail": [
+      {
+       "key": "dolar",
+       "expected": "numero",
+       "got": "fato"
+      }
+     ]
+    },
+    {
+     "id": "e14",
+     "expected_n": 1,
+     "found": 1,
+     "type_ok": 1,
+     "checkable_ok": 1,
+     "extras": 0,
+     "leaks": 0,
+     "detail": [
+      {
+       "key": "absurdo",
+       "expected": "opiniao",
+       "got": "opiniao"
+      }
+     ]
+    },
+    {
+     "id": "e15",
+     "expected_n": 1,
+     "found": 1,
+     "type_ok": 1,
+     "checkable_ok": 1,
+     "extras": 0,
+     "leaks": 0,
+     "detail": [
+      {
+       "key": "anvisa",
+       "expected": "fato",
+       "got": "fato"
+      }
+     ]
+    },
+    {
+     "id": "e16",
+     "expected_n": 1,
+     "found": 1,
+     "type_ok": 1,
+     "checkable_ok": 1,
+     "extras": 0,
+     "leaks": 0,
+     "detail": [
+      {
+       "key": "obras",
+       "expected": "previsao",
+       "got": "previsao"
+      }
+     ]
+    },
+    {
+     "id": "e17",
+     "expected_n": 1,
+     "found": 1,
+     "type_ok": 1,
+     "checkable_ok": 1,
+     "extras": 0,
+     "leaks": 0,
+     "detail": [
+      {
+       "key": "estadio",
+       "expected": "pergunta",
+       "got": "pergunta"
+      }
+     ]
+    },
+    {
+     "id": "e18",
+     "expected_n": 1,
+     "found": 1,
+     "type_ok": 1,
+     "checkable_ok": 1,
+     "extras": 0,
+     "leaks": 0,
+     "detail": [
+      {
+       "key": "selic",
+       "expected": "numero",
+       "got": "numero"
+      }
+     ]
+    },
+    {
+     "id": "e19",
+     "expected_n": 1,
+     "found": 1,
+     "type_ok": 1,
+     "checkable_ok": 1,
+     "extras": 0,
+     "leaks": 0,
+     "detail": [
+      {
+       "key": "icms",
+       "expected": "fato",
+       "got": "fato"
+      }
+     ]
+    },
+    {
+     "id": "e20",
+     "expected_n": 1,
+     "found": 1,
+     "type_ok": 1,
+     "checkable_ok": 1,
+     "extras": 0,
+     "leaks": 0,
+     "detail": [
+      {
+       "key": "habitantes",
+       "expected": "numero",
+       "got": "numero"
+      }
+     ]
+    },
+    {
+     "id": "e21",
+     "expected_n": 1,
+     "found": 1,
+     "type_ok": 1,
+     "checkable_ok": 1,
+     "extras": 0,
+     "leaks": 0,
+     "detail": [
+      {
+       "key": "arcabouco",
+       "expected": "fato",
+       "got": "fato"
+      }
+     ]
+    },
+    {
+     "id": "e22",
+     "expected_n": 1,
+     "found": 1,
+     "type_ok": 0,
+     "checkable_ok": 1,
+     "extras": 0,
+     "leaks": 0,
+     "detail": [
+      {
+       "key": "orcamento",
+       "expected": "numero",
+       "got": "fato"
+      }
+     ]
+    },
+    {
+     "id": "e23",
+     "expected_n": 2,
+     "found": 2,
+     "type_ok": 1,
+     "checkable_ok": 2,
+     "extras": 0,
+     "leaks": 0,
+     "detail": [
+      {
+       "key": "selic",
+       "expected": "numero",
+       "got": "numero"
+      },
+      {
+       "key": "unanime",
+       "expected": "citacao",
+       "got": "fato"
+      }
+     ]
+    },
+    {
+     "id": "e24",
+     "expected_n": 1,
+     "found": 1,
+     "type_ok": 1,
+     "checkable_ok": 1,
+     "extras": 0,
+     "leaks": 0,
+     "detail": [
+      {
+       "key": "pec da seguranca",
+       "expected": "fato",
+       "got": "fato"
+      }
+     ]
+    },
+    {
+     "id": "e25",
+     "expected_n": 1,
+     "found": 1,
+     "type_ok": 1,
+     "checkable_ok": 1,
+     "extras": 0,
+     "leaks": 0,
+     "detail": [
+      {
+       "key": "pior",
+       "expected": "opiniao",
+       "got": "opiniao"
+      }
+     ]
+    }
+   ]
+  },
+  "llama3.1:8b": {
+   "task": "extract",
+   "cases": 25,
+   "expected_claims": 29,
+   "recall": {
+    "k": 26,
+    "n": 29,
+    "value": 0.896551724137931,
+    "low": 0.7361455275293085,
+    "high": 0.9641857596186989
+   },
+   "type_accuracy": {
+    "k": 21,
+    "n": 26,
+    "value": 0.8076923076923077,
+    "low": 0.6212336384535001,
+    "high": 0.9149306422821174
+   },
+   "checkable_agreement": {
+    "k": 24,
+    "n": 26,
+    "value": 0.9230769230769231,
+    "low": 0.7585805251948495,
+    "high": 0.9786453608166245
+   },
+   "extras_per_text": 0.0,
+   "prompt_leaks": 0,
+   "fallbacks_to_rules": 25,
+   "llm": {
+    "calls": 25,
+    "errors": 25,
+    "p50_s": 0.002738708004471846,
+    "p95_s": 0.008299500004795846
+   },
+   "results": [
+    {
+     "id": "e01",
+     "expected_n": 1,
+     "found": 1,
+     "type_ok": 1,
+     "checkable_ok": 1,
+     "extras": 0,
+     "leaks": 0,
+     "detail": [
+      {
+       "key": "selic",
+       "expected": "numero",
+       "got": "numero"
+      }
+     ]
+    },
+    {
+     "id": "e02",
+     "expected_n": 1,
+     "found": 1,
+     "type_ok": 1,
+     "checkable_ok": 1,
+     "extras": 0,
+     "leaks": 0,
+     "detail": [
+      {
+       "key": "desemprego",
+       "expected": "numero",
+       "got": "numero"
+      }
+     ]
+    },
+    {
+     "id": "e03",
+     "expected_n": 1,
+     "found": 1,
+     "type_ok": 0,
+     "checkable_ok": 1,
+     "extras": 0,
+     "leaks": 0,
+     "detail": [
+      {
+       "key": "pec 6x1",
+       "expected": "fato",
+       "got": "numero"
+      }
+     ]
+    },
+    {
+     "id": "e04",
+     "expected_n": 1,
+     "found": 1,
+     "type_ok": 1,
+     "checkable_ok": 1,
+     "extras": 0,
+     "leaks": 0,
+     "detail": [
+      {
+       "key": "reforma tributaria",
+       "expected": "fato",
+       "got": "fato"
+      }
+     ]
+    },
+    {
+     "id": "e05",
+     "expected_n": 1,
+     "found": 1,
+     "type_ok": 0,
+     "checkable_ok": 0,
+     "extras": 0,
+     "leaks": 0,
+     "detail": [
+      {
+       "key": "vergonha",
+       "expected": "opiniao",
+       "got": "numero"
+      }
+     ]
+    },
+    {
+     "id": "e06",
+     "expected_n": 1,
+     "found": 1,
+     "type_ok": 1,
+     "checkable_ok": 1,
+     "extras": 0,
+     "leaks": 0,
+     "detail": [
+      {
+       "key": "crescer",
+       "expected": "previsao",
+       "got": "previsao"
+      }
+     ]
+    },
+    {
+     "id": "e07",
+     "expected_n": 1,
+     "found": 1,
+     "type_ok": 1,
+     "checkable_ok": 1,
+     "extras": 0,
+     "leaks": 0,
+     "detail": [
+      {
+       "key": "inflacao",
+       "expected": "pergunta",
+       "got": "pergunta"
+      }
+     ]
+    },
+    {
+     "id": "e08",
+     "expected_n": 1,
+     "found": 1,
+     "type_ok": 0,
+     "checkable_ok": 0,
+     "extras": 0,
+     "leaks": 0,
+     "detail": [
+      {
+       "key": "debate",
+       "expected": "citacao",
+       "got": "previsao"
+      }
+     ]
+    },
+    {
+     "id": "e09",
+     "expected_n": 2,
+     "found": 1,
+     "type_ok": 1,
+     "checkable_ok": 1,
+     "extras": 0,
+     "leaks": 0,
+     "detail": [
+      {
+       "key": "selic",
+       "expected": "numero",
+       "got": "numero"
+      },
+      {
+       "key": "inflacao",
+       "expected": "numero",
+       "got": null
+      }
+     ]
+    },
+    {
+     "id": "e10",
+     "expected_n": 3,
+     "found": 2,
+     "type_ok": 2,
+     "checkable_ok": 2,
+     "extras": 0,
+     "leaks": 0,
+     "detail": [
+      {
+       "key": "pib",
+       "expected": "numero",
+       "got": "numero"
+      },
+      {
+       "key": "melhor",
+       "expected": "opiniao",
+       "got": null
+      },
+      {
+       "key": "desemprego",
+       "expected": "numero",
+       "got": "numero"
+      }
+     ]
+    },
+    {
+     "id": "e11",
+     "expected_n": 1,
+     "found": 1,
+     "type_ok": 0,
+     "checkable_ok": 1,
+     "extras": 0,
+     "leaks": 0,
+     "detail": [
+      {
+       "key": "plano diretor",
+       "expected": "fato",
+       "got": "numero"
+      }
+     ]
+    },
+    {
+     "id": "e12",
+     "expected_n": 1,
+     "found": 1,
+     "type_ok": 1,
+     "checkable_ok": 1,
+     "extras": 0,
+     "leaks": 0,
+     "detail": [
+      {
+       "key": "maioridade",
+       "expected": "fato",
+       "got": "fato"
+      }
+     ]
+    },
+    {
+     "id": "e13",
+     "expected_n": 1,
+     "found": 1,
+     "type_ok": 1,
+     "checkable_ok": 1,
+     "extras": 0,
+     "leaks": 0,
+     "detail": [
+      {
+       "key": "dolar",
+       "expected": "numero",
+       "got": "numero"
+      }
+     ]
+    },
+    {
+     "id": "e14",
+     "expected_n": 1,
+     "found": 1,
+     "type_ok": 1,
+     "checkable_ok": 1,
+     "extras": 0,
+     "leaks": 0,
+     "detail": [
+      {
+       "key": "absurdo",
+       "expected": "opiniao",
+       "got": "opiniao"
+      }
+     ]
+    },
+    {
+     "id": "e15",
+     "expected_n": 1,
+     "found": 1,
+     "type_ok": 0,
+     "checkable_ok": 1,
+     "extras": 0,
+     "leaks": 0,
+     "detail": [
+      {
+       "key": "anvisa",
+       "expected": "fato",
+       "got": "numero"
+      }
+     ]
+    },
+    {
+     "id": "e16",
+     "expected_n": 1,
+     "found": 1,
+     "type_ok": 1,
+     "checkable_ok": 1,
+     "extras": 0,
+     "leaks": 0,
+     "detail": [
+      {
+       "key": "obras",
+       "expected": "previsao",
+       "got": "previsao"
+      }
+     ]
+    },
+    {
+     "id": "e17",
+     "expected_n": 1,
+     "found": 1,
+     "type_ok": 1,
+     "checkable_ok": 1,
+     "extras": 0,
+     "leaks": 0,
+     "detail": [
+      {
+       "key": "estadio",
+       "expected": "pergunta",
+       "got": "pergunta"
+      }
+     ]
+    },
+    {
+     "id": "e18",
+     "expected_n": 1,
+     "found": 1,
+     "type_ok": 1,
+     "checkable_ok": 1,
+     "extras": 0,
+     "leaks": 0,
+     "detail": [
+      {
+       "key": "selic",
+       "expected": "numero",
+       "got": "numero"
+      }
+     ]
+    },
+    {
+     "id": "e19",
+     "expected_n": 1,
+     "found": 1,
+     "type_ok": 1,
+     "checkable_ok": 1,
+     "extras": 0,
+     "leaks": 0,
+     "detail": [
+      {
+       "key": "icms",
+       "expected": "fato",
+       "got": "fato"
+      }
+     ]
+    },
+    {
+     "id": "e20",
+     "expected_n": 1,
+     "found": 1,
+     "type_ok": 1,
+     "checkable_ok": 1,
+     "extras": 0,
+     "leaks": 0,
+     "detail": [
+      {
+       "key": "habitantes",
+       "expected": "numero",
+       "got": "numero"
+      }
+     ]
+    },
+    {
+     "id": "e21",
+     "expected_n": 1,
+     "found": 1,
+     "type_ok": 1,
+     "checkable_ok": 1,
+     "extras": 0,
+     "leaks": 0,
+     "detail": [
+      {
+       "key": "arcabouco",
+       "expected": "fato",
+       "got": "fato"
+      }
+     ]
+    },
+    {
+     "id": "e22",
+     "expected_n": 1,
+     "found": 1,
+     "type_ok": 1,
+     "checkable_ok": 1,
+     "extras": 0,
+     "leaks": 0,
+     "detail": [
+      {
+       "key": "orcamento",
+       "expected": "numero",
+       "got": "numero"
+      }
+     ]
+    },
+    {
+     "id": "e23",
+     "expected_n": 2,
+     "found": 1,
+     "type_ok": 1,
+     "checkable_ok": 1,
+     "extras": 0,
+     "leaks": 0,
+     "detail": [
+      {
+       "key": "selic",
+       "expected": "numero",
+       "got": "numero"
+      },
+      {
+       "key": "unanime",
+       "expected": "citacao",
+       "got": null
+      }
+     ]
+    },
+    {
+     "id": "e24",
+     "expected_n": 1,
+     "found": 1,
+     "type_ok": 1,
+     "checkable_ok": 1,
+     "extras": 0,
+     "leaks": 0,
+     "detail": [
+      {
+       "key": "pec da seguranca",
+       "expected": "fato",
+       "got": "fato"
+      }
+     ]
+    },
+    {
+     "id": "e25",
+     "expected_n": 1,
+     "found": 1,
+     "type_ok": 1,
+     "checkable_ok": 1,
+     "extras": 0,
+     "leaks": 0,
+     "detail": [
+      {
+       "key": "pior",
+       "expected": "opiniao",
+       "got": "opiniao"
+      }
+     ]
+    }
+   ]
+  }
+ },
+ "stance": {
+  "baseline": {
+   "task": "stance",
+   "cases": 16,
+   "items": 35,
+   "item_accuracy": {
+    "k": 11,
+    "n": 35,
+    "value": 0.3142857142857143,
+    "low": 0.18550658059782457,
+    "high": 0.47980071879251973
+   },
+   "majority_baseline": 0.37142857142857144,
+   "macro_f1": 0.4782608695652174,
+   "per_class": {
+    "supports": {
+     "precision": null,
+     "recall": 0.0,
+     "f1": null,
+     "support": 13
+    },
+    "contradicts": {
+     "precision": null,
+     "recall": 0.0,
+     "f1": null,
+     "support": 11
+    },
+    "irrelevant": {
+     "precision": 0.3142857142857143,
+     "recall": 1.0,
+     "f1": 0.4782608695652174,
+     "support": 11
+    }
+   },
+   "confusion": {
+    "supports": {
+     "supports": 0,
+     "contradicts": 0,
+     "irrelevant": 13
+    },
+    "contradicts": {
+     "supports": 0,
+     "contradicts": 0,
+     "irrelevant": 11
+    },
+    "irrelevant": {
+     "supports": 0,
+     "contradicts": 0,
+     "irrelevant": 11
+    }
+   },
+   "verdict_accuracy": {
+    "k": 6,
+    "n": 16,
+    "value": 0.375,
+    "low": 0.18480982554752806,
+    "high": 0.613593529020652
+   },
+   "confident_wrong": {
+    "k": 0,
+    "n": 16,
+    "value": 0.0,
+    "low": 0.0,
+    "high": 0.19361341827271994
+   },
+   "swap_pairs_correct": {
+    "k": 0,
+    "n": 1,
+    "value": 0.0,
+    "low": 0.0,
+    "high": 0.7934567085261071
+   },
+   "quotes_rejected": 0,
+   "llm_errors": 0,
+   "llm": null,
+   "results": [
+    {
+     "id": "s01",
+     "group": null,
+     "gold": "provavelmente_verdadeiro",
+     "got": "sem_evidencia",
+     "items": [
+      {
+       "id": 1,
+       "expected": "supports",
+       "got": "irrelevant"
+      },
+      {
+       "id": 2,
+       "expected": "supports",
+       "got": "irrelevant"
+      },
+      {
+       "id": 3,
+       "expected": "irrelevant",
+       "got": "irrelevant"
+      }
+     ],
+     "problems": []
+    },
+    {
+     "id": "s02",
+     "group": null,
+     "gold": "provavelmente_falso",
+     "got": "sem_evidencia",
+     "items": [
+      {
+       "id": 1,
+       "expected": "contradicts",
+       "got": "irrelevant"
+      },
+      {
+       "id": 2,
+       "expected": "contradicts",
+       "got": "irrelevant"
+      },
+      {
+       "id": 3,
+       "expected": "irrelevant",
+       "got": "irrelevant"
+      }
+     ],
+     "problems": []
+    },
+    {
+     "id": "s03",
+     "group": null,
+     "gold": "sem_evidencia",
+     "got": "sem_evidencia",
+     "items": [
+      {
+       "id": 1,
+       "expected": "irrelevant",
+       "got": "irrelevant"
+      },
+      {
+       "id": 2,
+       "expected": "supports",
+       "got": "irrelevant"
+      }
+     ],
+     "problems": []
+    },
+    {
+     "id": "s04",
+     "group": null,
+     "gold": "sem_evidencia",
+     "got": "sem_evidencia",
+     "items": [
+      {
+       "id": 1,
+       "expected": "irrelevant",
+       "got": "irrelevant"
+      },
+      {
+       "id": 2,
+       "expected": "irrelevant",
+       "got": "irrelevant"
+      }
+     ],
+     "problems": []
+    },
+    {
+     "id": "s05",
+     "group": null,
+     "gold": "provavelmente_verdadeiro",
+     "got": "sem_evidencia",
+     "items": [
+      {
+       "id": 1,
+       "expected": "supports",
+       "got": "irrelevant"
+      },
+      {
+       "id": 2,
+       "expected": "supports",
+       "got": "irrelevant"
+      }
+     ],
+     "problems": []
+    },
+    {
+     "id": "s06",
+     "group": null,
+     "gold": "provavelmente_falso",
+     "got": "sem_evidencia",
+     "items": [
+      {
+       "id": 1,
+       "expected": "contradicts",
+       "got": "irrelevant"
+      },
+      {
+       "id": 2,
+       "expected": "contradicts",
+       "got": "irrelevant"
+      }
+     ],
+     "problems": []
+    },
+    {
+     "id": "s07",
+     "group": null,
+     "gold": "sem_evidencia",
+     "got": "sem_evidencia",
+     "items": [
+      {
+       "id": 1,
+       "expected": "irrelevant",
+       "got": "irrelevant"
+      },
+      {
+       "id": 2,
+       "expected": "irrelevant",
+       "got": "irrelevant"
+      }
+     ],
+     "problems": []
+    },
+    {
+     "id": "s08",
+     "group": null,
+     "gold": "provavelmente_verdadeiro",
+     "got": "sem_evidencia",
+     "items": [
+      {
+       "id": 1,
+       "expected": "supports",
+       "got": "irrelevant"
+      },
+      {
+       "id": 2,
+       "expected": "supports",
+       "got": "irrelevant"
+      },
+      {
+       "id": 3,
+       "expected": "irrelevant",
+       "got": "irrelevant"
+      }
+     ],
+     "problems": []
+    },
+    {
+     "id": "s09",
+     "group": null,
+     "gold": "sem_evidencia",
+     "got": "sem_evidencia",
+     "items": [
+      {
+       "id": 1,
+       "expected": "irrelevant",
+       "got": "irrelevant"
+      },
+      {
+       "id": 2,
+       "expected": "contradicts",
+       "got": "irrelevant"
+      }
+     ],
+     "problems": []
+    },
+    {
+     "id": "s10",
+     "group": null,
+     "gold": "provavelmente_falso",
+     "got": "sem_evidencia",
+     "items": [
+      {
+       "id": 1,
+       "expected": "contradicts",
+       "got": "irrelevant"
+      },
+      {
+       "id": 2,
+       "expected": "contradicts",
+       "got": "irrelevant"
+      }
+     ],
+     "problems": []
+    },
+    {
+     "id": "s11",
+     "group": null,
+     "gold": "sem_evidencia",
+     "got": "sem_evidencia",
+     "items": [
+      {
+       "id": 1,
+       "expected": "supports",
+       "got": "irrelevant"
+      },
+      {
+       "id": 2,
+       "expected": "irrelevant",
+       "got": "irrelevant"
+      }
+     ],
+     "problems": []
+    },
+    {
+     "id": "s12",
+     "group": null,
+     "gold": "provavelmente_verdadeiro",
+     "got": "sem_evidencia",
+     "items": [
+      {
+       "id": 1,
+       "expected": "supports",
+       "got": "irrelevant"
+      },
+      {
+       "id": 2,
+       "expected": "supports",
+       "got": "irrelevant"
+      }
+     ],
+     "problems": []
+    },
+    {
+     "id": "s13",
+     "group": "swap1",
+     "gold": "provavelmente_verdadeiro",
+     "got": "sem_evidencia",
+     "items": [
+      {
+       "id": 1,
+       "expected": "supports",
+       "got": "irrelevant"
+      },
+      {
+       "id": 2,
+       "expected": "supports",
+       "got": "irrelevant"
+      }
+     ],
+     "problems": []
+    },
+    {
+     "id": "s14",
+     "group": "swap1",
+     "gold": "provavelmente_falso",
+     "got": "sem_evidencia",
+     "items": [
+      {
+       "id": 1,
+       "expected": "contradicts",
+       "got": "irrelevant"
+      },
+      {
+       "id": 2,
+       "expected": "contradicts",
+       "got": "irrelevant"
+      }
+     ],
+     "problems": []
+    },
+    {
+     "id": "s15",
+     "group": null,
+     "gold": "sem_evidencia",
+     "got": "sem_evidencia",
+     "items": [
+      {
+       "id": 1,
+       "expected": "irrelevant",
+       "got": "irrelevant"
+      },
+      {
+       "id": 2,
+       "expected": "supports",
+       "got": "irrelevant"
+      }
+     ],
+     "problems": []
+    },
+    {
+     "id": "s16",
+     "group": null,
+     "gold": "provavelmente_falso",
+     "got": "sem_evidencia",
+     "items": [
+      {
+       "id": 1,
+       "expected": "contradicts",
+       "got": "irrelevant"
+      },
+      {
+       "id": 2,
+       "expected": "contradicts",
+       "got": "irrelevant"
+      }
+     ],
+     "problems": []
+    }
+   ]
+  },
+  "qwen2.5:7b": {
+   "task": "stance",
+   "cases": 16,
+   "items": 35,
+   "item_accuracy": {
+    "k": 25,
+    "n": 35,
+    "value": 0.7142857142857143,
+    "low": 0.5494475193017891,
+    "high": 0.8367363660170444
+   },
+   "majority_baseline": 0.37142857142857144,
+   "macro_f1": 0.6980842911877394,
+   "per_class": {
+    "supports": {
+     "precision": 0.75,
+     "recall": 0.9230769230769231,
+     "f1": 0.8275862068965517,
+     "support": 13
+    },
+    "contradicts": {
+     "precision": 0.7,
+     "recall": 0.6363636363636364,
+     "f1": 0.6666666666666666,
+     "support": 11
+    },
+    "irrelevant": {
+     "precision": 0.6666666666666666,
+     "recall": 0.5454545454545454,
+     "f1": 0.6,
+     "support": 11
+    }
+   },
+   "confusion": {
+    "supports": {
+     "supports": 12,
+     "contradicts": 0,
+     "irrelevant": 1
+    },
+    "contradicts": {
+     "supports": 2,
+     "contradicts": 7,
+     "irrelevant": 2
+    },
+    "irrelevant": {
+     "supports": 2,
+     "contradicts": 3,
+     "irrelevant": 6
+    }
+   },
+   "verdict_accuracy": {
+    "k": 11,
+    "n": 16,
+    "value": 0.6875,
+    "low": 0.4440393186673406,
+    "high": 0.8583556494803894
+   },
+   "confident_wrong": {
+    "k": 3,
+    "n": 16,
+    "value": 0.1875,
+    "low": 0.06591478773586765,
+    "high": 0.4300935986845823
+   },
+   "swap_pairs_correct": {
+    "k": 0,
+    "n": 1,
+    "value": 0.0,
+    "low": 0.0,
+    "high": 0.7934567085261071
+   },
+   "quotes_rejected": 4,
+   "llm_errors": 0,
+   "llm": {
+    "calls": 16,
+    "errors": 0,
+    "p50_s": 11.740620005002711,
+    "p95_s": 18.045453509002982
+   },
+   "results": [
+    {
+     "id": "s01",
+     "group": null,
+     "gold": "provavelmente_verdadeiro",
+     "got": "provavelmente_verdadeiro",
+     "items": [
+      {
+       "id": 1,
+       "expected": "supports",
+       "got": "supports"
+      },
+      {
+       "id": 2,
+       "expected": "supports",
+       "got": "supports"
+      },
+      {
+       "id": 3,
+       "expected": "irrelevant",
+       "got": "irrelevant"
+      }
+     ],
+     "problems": []
+    },
+    {
+     "id": "s02",
+     "group": null,
+     "gold": "provavelmente_falso",
+     "got": "provavelmente_falso",
+     "items": [
+      {
+       "id": 1,
+       "expected": "contradicts",
+       "got": "contradicts"
+      },
+      {
+       "id": 2,
+       "expected": "contradicts",
+       "got": "contradicts"
+      },
+      {
+       "id": 3,
+       "expected": "irrelevant",
+       "got": "irrelevant"
+      }
+     ],
+     "problems": []
+    },
+    {
+     "id": "s03",
+     "group": null,
+     "gold": "sem_evidencia",
+     "got": "sem_evidencia",
+     "items": [
+      {
+       "id": 1,
+       "expected": "irrelevant",
+       "got": "irrelevant"
+      },
+      {
+       "id": 2,
+       "expected": "supports",
+       "got": "supports"
+      }
+     ],
+     "problems": [
+      "notícia 1: trecho não está literalmente no texto"
+     ]
+    },
+    {
+     "id": "s04",
+     "group": null,
+     "gold": "sem_evidencia",
+     "got": "provavelmente_verdadeiro",
+     "items": [
+      {
+       "id": 1,
+       "expected": "irrelevant",
+       "got": "supports"
+      },
+      {
+       "id": 2,
+       "expected": "irrelevant",
+       "got": "supports"
+      }
+     ],
+     "problems": []
+    },
+    {
+     "id": "s05",
+     "group": null,
+     "gold": "provavelmente_verdadeiro",
+     "got": "provavelmente_verdadeiro",
+     "items": [
+      {
+       "id": 1,
+       "expected": "supports",
+       "got": "supports"
+      },
+      {
+       "id": 2,
+       "expected": "supports",
+       "got": "supports"
+      }
+     ],
+     "problems": []
+    },
+    {
+     "id": "s06",
+     "group": null,
+     "gold": "provavelmente_falso",
+     "got": "provavelmente_falso",
+     "items": [
+      {
+       "id": 1,
+       "expected": "contradicts",
+       "got": "contradicts"
+      },
+      {
+       "id": 2,
+       "expected": "contradicts",
+       "got": "contradicts"
+      }
+     ],
+     "problems": []
+    },
+    {
+     "id": "s07",
+     "group": null,
+     "gold": "sem_evidencia",
+     "got": "provavelmente_falso",
+     "items": [
+      {
+       "id": 1,
+       "expected": "irrelevant",
+       "got": "contradicts"
+      },
+      {
+       "id": 2,
+       "expected": "irrelevant",
+       "got": "contradicts"
+      }
+     ],
+     "problems": []
+    },
+    {
+     "id": "s08",
+     "group": null,
+     "gold": "provavelmente_verdadeiro",
+     "got": "provavelmente_verdadeiro",
+     "items": [
+      {
+       "id": 1,
+       "expected": "supports",
+       "got": "supports"
+      },
+      {
+       "id": 2,
+       "expected": "supports",
+       "got": "supports"
+      },
+      {
+       "id": 3,
+       "expected": "irrelevant",
+       "got": "irrelevant"
+      }
+     ],
+     "problems": [
+      "notícia 3: trecho não está literalmente no texto"
+     ]
+    },
+    {
+     "id": "s09",
+     "group": null,
+     "gold": "sem_evidencia",
+     "got": "sem_evidencia",
+     "items": [
+      {
+       "id": 1,
+       "expected": "irrelevant",
+       "got": "irrelevant"
+      },
+      {
+       "id": 2,
+       "expected": "contradicts",
+       "got": "irrelevant"
+      }
+     ],
+     "problems": [
+      "notícia 1: trecho não está literalmente no texto",
+      "notícia 2: trecho não está literalmente no texto"
+     ]
+    },
+    {
+     "id": "s10",
+     "group": null,
+     "gold": "provavelmente_falso",
+     "got": "provavelmente_falso",
+     "items": [
+      {
+       "id": 1,
+       "expected": "contradicts",
+       "got": "contradicts"
+      },
+      {
+       "id": 2,
+       "expected": "contradicts",
+       "got": "contradicts"
+      }
+     ],
+     "problems": []
+    },
+    {
+     "id": "s11",
+     "group": null,
+     "gold": "sem_evidencia",
+     "got": "sem_evidencia",
+     "items": [
+      {
+       "id": 1,
+       "expected": "supports",
+       "got": "supports"
+      },
+      {
+       "id": 2,
+       "expected": "irrelevant",
+       "got": "irrelevant"
+      }
+     ],
+     "problems": []
+    },
+    {
+     "id": "s12",
+     "group": null,
+     "gold": "provavelmente_verdadeiro",
+     "got": "sem_evidencia",
+     "items": [
+      {
+       "id": 1,
+       "expected": "supports",
+       "got": "supports"
+      },
+      {
+       "id": 2,
+       "expected": "supports",
+       "got": "irrelevant"
+      }
+     ],
+     "problems": []
+    },
+    {
+     "id": "s13",
+     "group": "swap1",
+     "gold": "provavelmente_verdadeiro",
+     "got": "provavelmente_verdadeiro",
+     "items": [
+      {
+       "id": 1,
+       "expected": "supports",
+       "got": "supports"
+      },
+      {
+       "id": 2,
+       "expected": "supports",
+       "got": "supports"
+      }
+     ],
+     "problems": []
+    },
+    {
+     "id": "s14",
+     "group": "swap1",
+     "gold": "provavelmente_falso",
+     "got": "sem_evidencia",
+     "items": [
+      {
+       "id": 1,
+       "expected": "contradicts",
+       "got": "contradicts"
+      },
+      {
+       "id": 2,
+       "expected": "contradicts",
+       "got": "irrelevant"
+      }
+     ],
+     "problems": []
+    },
+    {
+     "id": "s15",
+     "group": null,
+     "gold": "sem_evidencia",
+     "got": "sem_evidencia",
+     "items": [
+      {
+       "id": 1,
+       "expected": "irrelevant",
+       "got": "contradicts"
+      },
+      {
+       "id": 2,
+       "expected": "supports",
+       "got": "supports"
+      }
+     ],
+     "problems": []
+    },
+    {
+     "id": "s16",
+     "group": null,
+     "gold": "provavelmente_falso",
+     "got": "provavelmente_verdadeiro",
+     "items": [
+      {
+       "id": 1,
+       "expected": "contradicts",
+       "got": "supports"
+      },
+      {
+       "id": 2,
+       "expected": "contradicts",
+       "got": "supports"
+      }
+     ],
+     "problems": []
+    }
+   ]
+  },
+  "llama3.1:8b": {
+   "task": "stance",
+   "cases": 16,
+   "items": 35,
+   "item_accuracy": {
+    "k": 11,
+    "n": 35,
+    "value": 0.3142857142857143,
+    "low": 0.18550658059782457,
+    "high": 0.47980071879251973
+   },
+   "majority_baseline": 0.37142857142857144,
+   "macro_f1": 0.4782608695652174,
+   "per_class": {
+    "supports": {
+     "precision": null,
+     "recall": 0.0,
+     "f1": null,
+     "support": 13
+    },
+    "contradicts": {
+     "precision": null,
+     "recall": 0.0,
+     "f1": null,
+     "support": 11
+    },
+    "irrelevant": {
+     "precision": 0.3142857142857143,
+     "recall": 1.0,
+     "f1": 0.4782608695652174,
+     "support": 11
+    }
+   },
+   "confusion": {
+    "supports": {
+     "supports": 0,
+     "contradicts": 0,
+     "irrelevant": 13
+    },
+    "contradicts": {
+     "supports": 0,
+     "contradicts": 0,
+     "irrelevant": 11
+    },
+    "irrelevant": {
+     "supports": 0,
+     "contradicts": 0,
+     "irrelevant": 11
+    }
+   },
+   "verdict_accuracy": {
+    "k": 6,
+    "n": 16,
+    "value": 0.375,
+    "low": 0.18480982554752806,
+    "high": 0.613593529020652
+   },
+   "confident_wrong": {
+    "k": 0,
+    "n": 16,
+    "value": 0.0,
+    "low": 0.0,
+    "high": 0.19361341827271994
+   },
+   "swap_pairs_correct": {
+    "k": 0,
+    "n": 1,
+    "value": 0.0,
+    "low": 0.0,
+    "high": 0.7934567085261071
+   },
+   "quotes_rejected": 0,
+   "llm_errors": 16,
+   "llm": {
+    "calls": 16,
+    "errors": 16,
+    "p50_s": 0.0022501250059576705,
+    "p95_s": 0.0031186249980237335
+   },
+   "results": [
+    {
+     "id": "s01",
+     "group": null,
+     "gold": "provavelmente_verdadeiro",
+     "got": "sem_evidencia",
+     "items": [
+      {
+       "id": 1,
+       "expected": "supports",
+       "got": "irrelevant"
+      },
+      {
+       "id": 2,
+       "expected": "supports",
+       "got": "irrelevant"
+      },
+      {
+       "id": 3,
+       "expected": "irrelevant",
+       "got": "irrelevant"
+      }
+     ],
+     "problems": [
+      "LLM: Ollama respondeu 404: {\"error\":\"model 'llama3.1:8b' not found\"}"
+     ]
+    },
+    {
+     "id": "s02",
+     "group": null,
+     "gold": "provavelmente_falso",
+     "got": "sem_evidencia",
+     "items": [
+      {
+       "id": 1,
+       "expected": "contradicts",
+       "got": "irrelevant"
+      },
+      {
+       "id": 2,
+       "expected": "contradicts",
+       "got": "irrelevant"
+      },
+      {
+       "id": 3,
+       "expected": "irrelevant",
+       "got": "irrelevant"
+      }
+     ],
+     "problems": [
+      "LLM: Ollama respondeu 404: {\"error\":\"model 'llama3.1:8b' not found\"}"
+     ]
+    },
+    {
+     "id": "s03",
+     "group": null,
+     "gold": "sem_evidencia",
+     "got": "sem_evidencia",
+     "items": [
+      {
+       "id": 1,
+       "expected": "irrelevant",
+       "got": "irrelevant"
+      },
+      {
+       "id": 2,
+       "expected": "supports",
+       "got": "irrelevant"
+      }
+     ],
+     "problems": [
+      "LLM: Ollama respondeu 404: {\"error\":\"model 'llama3.1:8b' not found\"}"
+     ]
+    },
+    {
+     "id": "s04",
+     "group": null,
+     "gold": "sem_evidencia",
+     "got": "sem_evidencia",
+     "items": [
+      {
+       "id": 1,
+       "expected": "irrelevant",
+       "got": "irrelevant"
+      },
+      {
+       "id": 2,
+       "expected": "irrelevant",
+       "got": "irrelevant"
+      }
+     ],
+     "problems": [
+      "LLM: Ollama respondeu 404: {\"error\":\"model 'llama3.1:8b' not found\"}"
+     ]
+    },
+    {
+     "id": "s05",
+     "group": null,
+     "gold": "provavelmente_verdadeiro",
+     "got": "sem_evidencia",
+     "items": [
+      {
+       "id": 1,
+       "expected": "supports",
+       "got": "irrelevant"
+      },
+      {
+       "id": 2,
+       "expected": "supports",
+       "got": "irrelevant"
+      }
+     ],
+     "problems": [
+      "LLM: Ollama respondeu 404: {\"error\":\"model 'llama3.1:8b' not found\"}"
+     ]
+    },
+    {
+     "id": "s06",
+     "group": null,
+     "gold": "provavelmente_falso",
+     "got": "sem_evidencia",
+     "items": [
+      {
+       "id": 1,
+       "expected": "contradicts",
+       "got": "irrelevant"
+      },
+      {
+       "id": 2,
+       "expected": "contradicts",
+       "got": "irrelevant"
+      }
+     ],
+     "problems": [
+      "LLM: Ollama respondeu 404: {\"error\":\"model 'llama3.1:8b' not found\"}"
+     ]
+    },
+    {
+     "id": "s07",
+     "group": null,
+     "gold": "sem_evidencia",
+     "got": "sem_evidencia",
+     "items": [
+      {
+       "id": 1,
+       "expected": "irrelevant",
+       "got": "irrelevant"
+      },
+      {
+       "id": 2,
+       "expected": "irrelevant",
+       "got": "irrelevant"
+      }
+     ],
+     "problems": [
+      "LLM: Ollama respondeu 404: {\"error\":\"model 'llama3.1:8b' not found\"}"
+     ]
+    },
+    {
+     "id": "s08",
+     "group": null,
+     "gold": "provavelmente_verdadeiro",
+     "got": "sem_evidencia",
+     "items": [
+      {
+       "id": 1,
+       "expected": "supports",
+       "got": "irrelevant"
+      },
+      {
+       "id": 2,
+       "expected": "supports",
+       "got": "irrelevant"
+      },
+      {
+       "id": 3,
+       "expected": "irrelevant",
+       "got": "irrelevant"
+      }
+     ],
+     "problems": [
+      "LLM: Ollama respondeu 404: {\"error\":\"model 'llama3.1:8b' not found\"}"
+     ]
+    },
+    {
+     "id": "s09",
+     "group": null,
+     "gold": "sem_evidencia",
+     "got": "sem_evidencia",
+     "items": [
+      {
+       "id": 1,
+       "expected": "irrelevant",
+       "got": "irrelevant"
+      },
+      {
+       "id": 2,
+       "expected": "contradicts",
+       "got": "irrelevant"
+      }
+     ],
+     "problems": [
+      "LLM: Ollama respondeu 404: {\"error\":\"model 'llama3.1:8b' not found\"}"
+     ]
+    },
+    {
+     "id": "s10",
+     "group": null,
+     "gold": "provavelmente_falso",
+     "got": "sem_evidencia",
+     "items": [
+      {
+       "id": 1,
+       "expected": "contradicts",
+       "got": "irrelevant"
+      },
+      {
+       "id": 2,
+       "expected": "contradicts",
+       "got": "irrelevant"
+      }
+     ],
+     "problems": [
+      "LLM: Ollama respondeu 404: {\"error\":\"model 'llama3.1:8b' not found\"}"
+     ]
+    },
+    {
+     "id": "s11",
+     "group": null,
+     "gold": "sem_evidencia",
+     "got": "sem_evidencia",
+     "items": [
+      {
+       "id": 1,
+       "expected": "supports",
+       "got": "irrelevant"
+      },
+      {
+       "id": 2,
+       "expected": "irrelevant",
+       "got": "irrelevant"
+      }
+     ],
+     "problems": [
+      "LLM: Ollama respondeu 404: {\"error\":\"model 'llama3.1:8b' not found\"}"
+     ]
+    },
+    {
+     "id": "s12",
+     "group": null,
+     "gold": "provavelmente_verdadeiro",
+     "got": "sem_evidencia",
+     "items": [
+      {
+       "id": 1,
+       "expected": "supports",
+       "got": "irrelevant"
+      },
+      {
+       "id": 2,
+       "expected": "supports",
+       "got": "irrelevant"
+      }
+     ],
+     "problems": [
+      "LLM: Ollama respondeu 404: {\"error\":\"model 'llama3.1:8b' not found\"}"
+     ]
+    },
+    {
+     "id": "s13",
+     "group": "swap1",
+     "gold": "provavelmente_verdadeiro",
+     "got": "sem_evidencia",
+     "items": [
+      {
+       "id": 1,
+       "expected": "supports",
+       "got": "irrelevant"
+      },
+      {
+       "id": 2,
+       "expected": "supports",
+       "got": "irrelevant"
+      }
+     ],
+     "problems": [
+      "LLM: Ollama respondeu 404: {\"error\":\"model 'llama3.1:8b' not found\"}"
+     ]
+    },
+    {
+     "id": "s14",
+     "group": "swap1",
+     "gold": "provavelmente_falso",
+     "got": "sem_evidencia",
+     "items": [
+      {
+       "id": 1,
+       "expected": "contradicts",
+       "got": "irrelevant"
+      },
+      {
+       "id": 2,
+       "expected": "contradicts",
+       "got": "irrelevant"
+      }
+     ],
+     "problems": [
+      "LLM: Ollama respondeu 404: {\"error\":\"model 'llama3.1:8b' not found\"}"
+     ]
+    },
+    {
+     "id": "s15",
+     "group": null,
+     "gold": "sem_evidencia",
+     "got": "sem_evidencia",
+     "items": [
+      {
+       "id": 1,
+       "expected": "irrelevant",
+       "got": "irrelevant"
+      },
+      {
+       "id": 2,
+       "expected": "supports",
+       "got": "irrelevant"
+      }
+     ],
+     "problems": [
+      "LLM: Ollama respondeu 404: {\"error\":\"model 'llama3.1:8b' not found\"}"
+     ]
+    },
+    {
+     "id": "s16",
+     "group": null,
+     "gold": "provavelmente_falso",
+     "got": "sem_evidencia",
+     "items": [
+      {
+       "id": 1,
+       "expected": "contradicts",
+       "got": "irrelevant"
+      },
+      {
+       "id": 2,
+       "expected": "contradicts",
+       "got": "irrelevant"
+      }
+     ],
+     "problems": [
+      "LLM: Ollama respondeu 404: {\"error\":\"model 'llama3.1:8b' not found\"}"
+     ]
+    }
+   ]
+  }
+ }
+}
